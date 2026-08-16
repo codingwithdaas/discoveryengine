@@ -20,6 +20,19 @@ one): a candidate FAILS this gate if any of the following hold:
     calibrates as "noise" (applicable neural methods only; see validation.stability)
 Every individual check's result is kept regardless of pass/fail, so a
 failed candidate's specific reasons are always in the record.
+
+bootstrap_n_resamples is independently configurable from n_permutations
+(which controls every OTHER permutation-based sub-check here), not
+because it's a different kind of parameter in principle, but because a
+real-data discovery made them behave very differently in practice: at a
+measured 64.3ms per Cox fit on a real N=367 SURVIVAL cohort, the
+bootstrap CI's hardcoded n_bootstrap=1000 alone accounted for ~22,000 of
+a real campaign's ~30,000 total Cox fits -- the large majority of the
+entire gate's cost, from one constant that was a reasonable default
+against near-free synthetic Cox fits and simply never revisited at real-
+data scale. Default stays 1000 (unchanged for synthetic/test callers,
+where it's already fast); real campaigns against SURVIVAL outcomes at
+non-trivial N should pass a smaller value explicitly.
 """
 
 from __future__ import annotations
@@ -62,6 +75,7 @@ def run_validation_gate(
     covariate_col: str | None = None,
     confound_for_crosscheck: dict[str, float] | None = None,
     n_permutations: int = 500,
+    bootstrap_n_resamples: int = 1000,
     seed: int = 0,
 ) -> GateResult:
     reasons: list[str] = []
@@ -70,7 +84,7 @@ def run_validation_gate(
     if half_split.calibration == "noise":
         reasons.append(f"half-split consistency calibrated as noise ({half_split.consistency_fraction:.2f})")
 
-    bootstrap_ci = bootstrap_confidence_interval(candidate, outcome, n_bootstrap=1000, seed=seed)
+    bootstrap_ci = bootstrap_confidence_interval(candidate, outcome, n_bootstrap=bootstrap_n_resamples, seed=seed)
 
     covariate_stratified = None
     freedman_lane = None

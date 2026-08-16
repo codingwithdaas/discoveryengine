@@ -73,6 +73,7 @@ def run_campaign(
     confound_for_crosscheck: dict[str, float] | None = None,
     correction_n_permutations: int = 1000,
     gate_n_permutations: int = 500,
+    gate_bootstrap_n_resamples: int = 1000,
     alpha: float = 0.05,
     seed: int = 0,
 ) -> CampaignReport:
@@ -95,6 +96,7 @@ def run_campaign(
             covariate_col=covariate_col,
             confound_for_crosscheck=confound_for_crosscheck,
             n_permutations=gate_n_permutations,
+            bootstrap_n_resamples=gate_bootstrap_n_resamples,
             seed=seed,
         )
         correction_result = correction_results[candidate.id]
