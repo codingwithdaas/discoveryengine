@@ -58,6 +58,32 @@ def test_recovers_the_planted_module_at_some_k():
     assert best_overlap >= 0.8, "expected at least one module to recover most of the planted correlated block"
 
 
+def test_zero_variance_feature_dropped_not_crashed(caplog):
+    """Real-data finding, not a hypothetical: a Spearman correlation
+    against a constant column is NaN, which scipy's linkage() correctly
+    refuses. 292 of the real 20,518-gene TCGA-BLCA RNA-seq matrix have
+    zero variance across the real cohort (e.g. TSSK2, unexpressed in
+    bladder tissue) -- this must be dropped before the distance matrix is
+    built, not crash discovery.
+    """
+    import logging
+
+    n_samples = 80
+    rng = np.random.default_rng(4)
+    sample_ids = [f"S{i}" for i in range(n_samples)]
+    latent = rng.normal(size=n_samples)
+    module_features = {f"feat_{i}": latent + rng.normal(scale=0.2, size=n_samples) for i in range(5)}
+    df = pd.DataFrame({**module_features, "constant_gene": np.zeros(n_samples)}, index=sample_ids)
+    cohort = CohortData(modalities={"rnaseq": df})
+
+    with caplog.at_level(logging.INFO):
+        candidates = HierarchicalClusteringDiscovery().discover(cohort, modality="rnaseq", k_values=[2])
+
+    assert len(candidates) > 0
+    assert all("constant_gene" not in c.provenance["member_features"] for c in candidates)
+    assert any("zero-variance" in r.message for r in caplog.records)
+
+
 def test_module_score_correlates_with_underlying_latent():
     n_samples = 80
     rng = np.random.default_rng(1)

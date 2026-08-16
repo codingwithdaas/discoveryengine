@@ -7,9 +7,29 @@ every K in the requested grid is run and EVERY resulting module at EVERY K
 becomes its own candidate. That's what lets campaign correction absorb
 K-selection as its own layer of multiple comparisons (skill rule 7) instead
 of it being a separate, unaccounted-for choice made before correction runs.
+
+Zero-variance features are dropped before the correlation/distance matrix
+is built, not after -- a real gap found against real data, not a
+hypothetical: a Spearman correlation against a constant column is NaN,
+which scipy's linkage() correctly refuses ("condensed distance matrix
+must contain only finite values"), and this module had no guard for it
+at all, unlike module_scores below, multimodal_input.py, nmf.py, and
+interaction.py, which all already drop zero-variance features for exactly
+this reason. Not a Hallmark-gene-set-specific quirk either: 292 of the
+full 20,518-gene real RNA-seq matrix have zero variance across the first
+real TCGA-BLCA cohort (e.g. TSSK2, simply unexpressed in bladder tissue),
+so any real feature subset was always one unlucky draw away from hitting
+this, not just the curated-pathway one that happened to surface it first.
+louvain.py was checked too (it also computes Spearman correlation on raw
+modality data) and confirmed safe without a fix: its edge-threshold
+comparison (abs(r) >= min_abs_correlation) is False for NaN by construction,
+so a constant feature just ends up correctly isolated with no edges,
+never crashing -- verified directly, not assumed from the code shape.
 """
 
 from __future__ import annotations
+
+import logging
 
 import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
@@ -17,6 +37,8 @@ from scipy.spatial.distance import squareform
 
 from discovery_engine.campaign.candidate import Candidate
 from discovery_engine.data.cohort import CohortData
+
+logger = logging.getLogger(__name__)
 
 
 class HierarchicalClusteringDiscovery:
@@ -32,6 +54,16 @@ class HierarchicalClusteringDiscovery:
     ) -> list[Candidate]:
         df = data.modalities[modality]
         sample_ids = list(df.index)
+
+        std = df.std(axis=0, ddof=0)
+        usable = std[std > 0].index
+        dropped = [f for f in df.columns if f not in usable]
+        if dropped:
+            logger.info(
+                "hierarchical_clustering: dropping %d zero-variance feature(s) from modality %r: %s",
+                len(dropped), modality, dropped[:10],
+            )
+        df = df[usable]
         feature_names = list(df.columns)
 
         corr = df.corr(method="spearman").to_numpy()
