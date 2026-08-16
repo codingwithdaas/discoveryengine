@@ -67,6 +67,58 @@ def test_freedman_lane_independent_signal_remains_significant_after_adjustment()
     assert result.p_value < 0.05
 
 
+def test_freedman_lane_raises_clear_error_not_linalgerror_when_too_few_covariate_complete_patients():
+    """Insurance against exactly the failure mode discovered building the
+    first real TCGA-BLCA loader: a NaN in the covariate design matrix makes
+    np.linalg.lstsq raise a generic LinAlgError ("SVD did not converge"),
+    confirmed directly before this fix existed. The pre-filter must turn
+    that into a specific, actionable ValueError instead.
+    """
+    n = 10
+    ids = [f"S{i}" for i in range(n)]
+    rng = np.random.default_rng(5)
+    grade = np.array([1.0] * 3 + [np.nan] * 7)  # only 3 covariate-complete, below the 5+1=6 minimum
+    covariates = pd.DataFrame({"grade": grade}, index=ids)
+    data = CohortData(modalities={}, covariates=covariates)
+    y = rng.normal(size=n)
+    scores = dict(zip(ids, rng.normal(size=n)))
+    outcome = OutcomeSpec(OutcomeType.CONTINUOUS, ids, y)
+    candidate = Candidate(
+        id="c", method="m", method_params={}, outcome_blind=True,
+        modality_touch=[], sample_ids=ids, scores=scores,
+    )
+
+    with pytest.raises(ValueError, match="complete .* coverage"):
+        freedman_lane_test(candidate, data, outcome, ["grade"], n_permutations=50, seed=0)
+
+
+def test_freedman_lane_runs_cleanly_with_a_small_number_of_missing_covariates():
+    """Mirrors the real TCGA-BLCA N=367 case (2/367 missing GRADE) at the
+    same ratio: a small number of NaN covariates among plenty of complete
+    ones should be silently dropped (logged) and the test should run
+    cleanly, not raise at all.
+    """
+    n = 367
+    ids = [f"S{i}" for i in range(n)]
+    rng = np.random.default_rng(6)
+    grade = rng.integers(0, 2, size=n).astype(float)
+    grade[[10, 200]] = np.nan  # exactly 2 missing, matching the real cohort's ratio
+    covariates = pd.DataFrame({"grade_high": grade}, index=ids)
+    data = CohortData(modalities={}, covariates=covariates)
+    latent = rng.normal(size=n)
+    y = 0.6 * latent + np.sqrt(1 - 0.36) * rng.normal(size=n)
+    scores = dict(zip(ids, latent + rng.normal(scale=0.3, size=n)))
+    outcome = OutcomeSpec(OutcomeType.CONTINUOUS, ids, y)
+    candidate = Candidate(
+        id="c", method="m", method_params={}, outcome_blind=True,
+        modality_touch=[], sample_ids=ids, scores=scores,
+    )
+
+    result = freedman_lane_test(candidate, data, outcome, ["grade_high"], n_permutations=200, seed=7)
+    assert 0.0 <= result.p_value <= 1.0
+    assert not np.isnan(result.observed_partial_statistic)
+
+
 def test_freedman_lane_raises_not_implemented_for_survival():
     data, ids, rng = _cohort_and_outcome(n=100)
     time = rng.exponential(size=100)
