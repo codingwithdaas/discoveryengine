@@ -22,6 +22,17 @@ Deliberately never embeds a raw Candidate object into the report itself
 though -- its `refit` field is a closure, not JSON-serializable; only
 specific already-serializable fields are pulled out of it.
 
+`feature_subset` is read from candidate.provenance["feature_subset"]
+(campaign.candidate.tag_feature_subset stamps it), None for candidates
+whose modality was searched in full (e.g. CMB's 256 features, never
+subsetted). Real gap this closes: a campaign that runs the same method
+against multiple deliberately different feature subsets of one modality
+(e.g. RNA-seq restricted to a variance-selected set vs a curated pathway
+set, both feeding the same correction pool) needs this to be visible in
+the report itself, not just known to whoever wrote the script that
+produced the candidates -- otherwise a later reader has no way to tell
+"all of RNA-seq was searched" from "only a subset was."
+
 PREFERRED_INTERPRETABILITY_SIGNAL is a fixed, manually-maintained,
 method-name-keyed lookup, the same shape as validation.stability's
 STABILITY_REQUIRED_METHODS and EMPIRICALLY_EXEMPTED_METHODS -- not a new
@@ -63,6 +74,7 @@ class CandidateReportEntry:
     candidate_id: str
     method: str
     accepted: bool
+    feature_subset: str | None
     gate: GateResult
     correction: CorrectionResult
     rejection_reasons: list[str]
@@ -131,6 +143,7 @@ def _build_entry(cr, candidate: Candidate, alpha: float) -> CandidateReportEntry
         candidate_id=cr.candidate_id,
         method=cr.method,
         accepted=cr.accepted,
+        feature_subset=candidate.provenance.get("feature_subset"),
         gate=cr.gate,
         correction=cr.correction,
         rejection_reasons=rejection_reasons,

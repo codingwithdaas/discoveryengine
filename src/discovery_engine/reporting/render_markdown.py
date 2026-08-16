@@ -38,12 +38,13 @@ def to_markdown(document: CampaignReportDocument) -> str:
 
     lines.append("## All candidates")
     lines.append("")
-    lines.append("| Candidate | Method | Accepted | Campaign p | Reproducibility | Reason(s) if rejected |")
-    lines.append("|---|---|---|---|---|---|")
+    lines.append("| Candidate | Method | Feature subset | Accepted | Campaign p | Reproducibility | Reason(s) if rejected |")
+    lines.append("|---|---|---|---|---|---|---|")
     for e in document.candidates:
         reasons = "; ".join(e.rejection_reasons) if e.rejection_reasons else ""
+        subset = e.feature_subset if e.feature_subset else "(full modality)"
         lines.append(
-            f"| {e.candidate_id} | {e.method} | {e.accepted} | {e.correction.campaign_p_value:.4f} | "
+            f"| {e.candidate_id} | {e.method} | {subset} | {e.accepted} | {e.correction.campaign_p_value:.4f} | "
             f"{e.gate.half_split.calibration} | {reasons} |"
         )
     lines.append("")

@@ -169,6 +169,24 @@ def test_attention_weight_stability_note_present_only_when_provenance_has_it():
     assert doc2.candidates[0].explanation_reproducibility_note is None
 
 
+def test_feature_subset_provenance_surfaces_in_report_and_defaults_to_none():
+    from discovery_engine.campaign.candidate import tag_feature_subset
+
+    gate = _make_gate_result("c1")
+    gate2 = _make_gate_result("c2")
+    report, candidates = _make_report([
+        ("c1", "nmf", True, gate, 0.001),
+        ("c2", "nmf", True, gate2, 0.001),
+    ])
+    tag_feature_subset([c for c in candidates if c.id == "c1"], "variance_top1000")
+    # c2 deliberately left untagged, to confirm the untouched-modality default
+
+    doc = build_report_document(report, candidates)
+    entry_by_id = {e.candidate_id: e for e in doc.candidates}
+    assert entry_by_id["c1"].feature_subset == "variance_top1000"
+    assert entry_by_id["c2"].feature_subset is None
+
+
 def test_method_summaries_include_zero_accepted_methods():
     """Negative-result reporting per skill rule 5: a method with zero
     accepted candidates must still appear in method_summaries, not be

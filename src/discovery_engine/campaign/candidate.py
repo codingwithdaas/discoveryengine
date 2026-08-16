@@ -75,3 +75,24 @@ class Candidate:
             created_at=d.get("created_at", ""),
             refit=None,
         )
+
+
+def tag_feature_subset(candidates: list["Candidate"], subset_name: str) -> list["Candidate"]:
+    """Stamps provenance["feature_subset"] on every candidate in place,
+    returning the same list for chaining.
+
+    Discovery methods have no concept of "named feature subset" -- they
+    just receive whatever DataFrame columns the caller passed in, and
+    don't need modifying to support this. When a campaign runs the SAME
+    method against multiple deliberately different feature subsets of the
+    same modality (e.g. RNA-seq restricted to a variance-selected set vs a
+    curated pathway set, both feeding the same campaign correction pool so
+    something surviving under both is stronger evidence than either
+    alone), this is what keeps each candidate's provenance honest about
+    which subset it actually saw -- a real gap, not a hypothetical one:
+    the first real TCGA-BLCA campaign's own report had no field for this
+    at all until it was added here, surfaced by review before the run.
+    """
+    for c in candidates:
+        c.provenance["feature_subset"] = subset_name
+    return candidates
