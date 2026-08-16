@@ -77,22 +77,31 @@ class Candidate:
         )
 
 
-def tag_feature_subset(candidates: list["Candidate"], subset_name: str) -> list["Candidate"]:
-    """Stamps provenance["feature_subset"] on every candidate in place,
-    returning the same list for chaining.
+def tag_feature_subset(candidates: list["Candidate"], subsets: dict[str, str | None]) -> list["Candidate"]:
+    """Stamps provenance["feature_subset"] on every candidate in place, as
+    a dict keyed by modality name (restricted to that candidate's own
+    modality_touch), not a single flat string -- returns the same list for
+    chaining.
 
-    Discovery methods have no concept of "named feature subset" -- they
-    just receive whatever DataFrame columns the caller passed in, and
-    don't need modifying to support this. When a campaign runs the SAME
-    method against multiple deliberately different feature subsets of the
-    same modality (e.g. RNA-seq restricted to a variance-selected set vs a
-    curated pathway set, both feeding the same campaign correction pool so
-    something surviving under both is stronger evidence than either
-    alone), this is what keeps each candidate's provenance honest about
-    which subset it actually saw -- a real gap, not a hypothetical one:
-    the first real TCGA-BLCA campaign's own report had no field for this
-    at all until it was added here, surfaced by review before the run.
+    A flat string is wrong for multi-modal candidates (autoencoder,
+    DeepSurv, attention), which touch more than one modality per
+    candidate and can have a DIFFERENT subset status per modality in the
+    very same candidate (e.g. CMB searched in full, RNA-seq restricted to
+    a variance-selected set, together in one autoencoder candidate). A
+    flat string would either mislabel the fully-searched modality as
+    subsetted too, or -- if multi-modal candidates were left untagged to
+    avoid that -- make them indistinguishable from a candidate that
+    genuinely searched everything, the exact ambiguity this field exists
+    to prevent. Caught by review before the real count-gathering compute
+    ran, not after.
+
+    `subsets` maps modality name -> subset name (None means "searched in
+    full"); only keys present in a given candidate's modality_touch are
+    applied to it, so one `subsets` dict covering every modality this
+    campaign ever touches is safe to reuse across every discover() call,
+    single- or multi-modal alike, rather than needing a separate call per
+    modality combination.
     """
     for c in candidates:
-        c.provenance["feature_subset"] = subset_name
+        c.provenance["feature_subset"] = {m: subsets.get(m) for m in c.modality_touch}
     return candidates

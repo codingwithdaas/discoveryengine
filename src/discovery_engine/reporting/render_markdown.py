@@ -42,10 +42,9 @@ def to_markdown(document: CampaignReportDocument) -> str:
     lines.append("|---|---|---|---|---|---|---|")
     for e in document.candidates:
         reasons = "; ".join(e.rejection_reasons) if e.rejection_reasons else ""
-        subset = e.feature_subset if e.feature_subset else "(full modality)"
         lines.append(
-            f"| {e.candidate_id} | {e.method} | {subset} | {e.accepted} | {e.correction.campaign_p_value:.4f} | "
-            f"{e.gate.half_split.calibration} | {reasons} |"
+            f"| {e.candidate_id} | {e.method} | {_format_feature_subset(e.feature_subset)} | {e.accepted} | "
+            f"{e.correction.campaign_p_value:.4f} | {e.gate.half_split.calibration} | {reasons} |"
         )
     lines.append("")
 
@@ -70,6 +69,14 @@ def to_markdown(document: CampaignReportDocument) -> str:
             lines.append("")
 
     return "\n".join(lines)
+
+
+def _format_feature_subset(feature_subset: dict[str, str | None] | None) -> str:
+    if feature_subset is None:
+        return "(untagged)"
+    if not feature_subset:
+        return "(no modalities recorded)"
+    return "; ".join(f"{modality}={subset or 'full'}" for modality, subset in sorted(feature_subset.items()))
 
 
 def write_markdown(document: CampaignReportDocument, path: str | Path) -> None:

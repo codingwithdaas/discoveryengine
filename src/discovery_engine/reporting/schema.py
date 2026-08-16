@@ -23,15 +23,23 @@ though -- its `refit` field is a closure, not JSON-serializable; only
 specific already-serializable fields are pulled out of it.
 
 `feature_subset` is read from candidate.provenance["feature_subset"]
-(campaign.candidate.tag_feature_subset stamps it), None for candidates
-whose modality was searched in full (e.g. CMB's 256 features, never
-subsetted). Real gap this closes: a campaign that runs the same method
-against multiple deliberately different feature subsets of one modality
-(e.g. RNA-seq restricted to a variance-selected set vs a curated pathway
-set, both feeding the same correction pool) needs this to be visible in
-the report itself, not just known to whoever wrote the script that
-produced the candidates -- otherwise a later reader has no way to tell
-"all of RNA-seq was searched" from "only a subset was."
+(campaign.candidate.tag_feature_subset stamps it): a dict keyed by
+modality name, not a flat string -- a multi-modal candidate (autoencoder,
+DeepSurv, attention) can have a DIFFERENT subset status per modality in
+the same candidate (e.g. CMB searched in full, RNA-seq restricted to a
+variance-selected set), and a flat string can't represent that (an
+earlier version of this field used one, caught and fixed before any real
+campaign compute ran on it). None at the CandidateReportEntry level
+means "never tagged at all" (distinct from an explicit per-modality
+{"cmb_histology": None} recording "searched in full"); each modality
+value within the dict is a subset name or None for "searched in full".
+Real gap this closes: a campaign that runs the same method against
+multiple deliberately different feature subsets of one modality (e.g.
+RNA-seq restricted to a variance-selected set vs a curated pathway set,
+both feeding the same correction pool) needs this to be visible in the
+report itself, not just known to whoever wrote the script that produced
+the candidates -- otherwise a later reader has no way to tell "all of
+RNA-seq was searched" from "only a subset was."
 
 PREFERRED_INTERPRETABILITY_SIGNAL is a fixed, manually-maintained,
 method-name-keyed lookup, the same shape as validation.stability's
@@ -74,7 +82,7 @@ class CandidateReportEntry:
     candidate_id: str
     method: str
     accepted: bool
-    feature_subset: str | None
+    feature_subset: dict[str, str | None] | None
     gate: GateResult
     correction: CorrectionResult
     rejection_reasons: list[str]

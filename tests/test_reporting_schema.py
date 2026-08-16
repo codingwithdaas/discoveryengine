@@ -45,11 +45,11 @@ def _make_gate_result(
     )
 
 
-def _make_candidate(cid, method="hierarchical_clustering", provenance=None):
+def _make_candidate(cid, method="hierarchical_clustering", provenance=None, modality_touch=None):
     ids = [f"S{i}" for i in range(10)]
     return Candidate(
         id=cid, method=method, method_params={}, outcome_blind=True,
-        modality_touch=["rnaseq"], sample_ids=ids, scores={sid: 0.1 for sid in ids},
+        modality_touch=modality_touch or ["rnaseq"], sample_ids=ids, scores={sid: 0.1 for sid in ids},
         provenance=provenance or {},
     )
 
@@ -178,13 +178,60 @@ def test_feature_subset_provenance_surfaces_in_report_and_defaults_to_none():
         ("c1", "nmf", True, gate, 0.001),
         ("c2", "nmf", True, gate2, 0.001),
     ])
-    tag_feature_subset([c for c in candidates if c.id == "c1"], "variance_top1000")
-    # c2 deliberately left untagged, to confirm the untouched-modality default
+    tag_feature_subset([c for c in candidates if c.id == "c1"], {"rnaseq": "variance_top1000"})
+    # c2 deliberately left untagged, to confirm the untouched-candidate default
 
     doc = build_report_document(report, candidates)
     entry_by_id = {e.candidate_id: e for e in doc.candidates}
-    assert entry_by_id["c1"].feature_subset == "variance_top1000"
+    assert entry_by_id["c1"].feature_subset == {"rnaseq": "variance_top1000"}
     assert entry_by_id["c2"].feature_subset is None
+
+
+def test_feature_subset_handles_multimodal_candidate_with_per_modality_status():
+    """The case that actually motivated the dict-not-string redesign: a
+    multi-modal candidate (autoencoder/DeepSurv/attention-shaped) touching
+    CMB (searched in full) AND RNA-seq (restricted to a named subset) in
+    the SAME candidate must report each modality's status independently,
+    not collapse to one flat value that would either mislabel CMB as
+    subsetted too, or leave the whole candidate untagged.
+    """
+    from discovery_engine.campaign.candidate import tag_feature_subset
+
+    gate = _make_gate_result("c1")
+    candidates = [_make_candidate("c1", method="autoencoder", modality_touch=["cmb_histology", "rnaseq"])]
+    correction = CorrectionResult("c1", "autoencoder", 2.0, 2.0, 0.001, 500)
+    report = CampaignReport("camp1", "cohort1", 0.05, [CampaignCandidateReport("c1", "autoencoder", gate, correction, True)])
+
+    tag_feature_subset(candidates, {"cmb_histology": None, "rnaseq": "variance_top1000"})
+
+    doc = build_report_document(report, candidates)
+    entry = doc.candidates[0]
+    assert entry.feature_subset == {"cmb_histology": None, "rnaseq": "variance_top1000"}
+    # explicit "searched in full" for CMB must NOT collapse to the same
+    # representation as "never tagged at all"
+    assert entry.feature_subset is not None
+    assert entry.feature_subset["cmb_histology"] is None
+
+
+def test_feature_subset_only_tags_modalities_the_candidate_actually_touches():
+    """A subsets dict covering every modality a campaign ever uses can be
+    reused across single- and multi-modal discover() calls alike -- a
+    single-modality candidate must not pick up an unrelated modality's
+    entry just because it was present in the shared `subsets` mapping.
+    """
+    from discovery_engine.campaign.candidate import tag_feature_subset
+
+    gate = _make_gate_result("c1")
+    candidates = [_make_candidate("c1", method="nmf", modality_touch=["rnaseq"])]
+    correction = CorrectionResult("c1", "nmf", 2.0, 2.0, 0.001, 500)
+    report = CampaignReport("camp1", "cohort1", 0.05, [CampaignCandidateReport("c1", "nmf", gate, correction, True)])
+
+    campaign_wide_subsets = {"cmb_histology": None, "rnaseq": "hallmark_4384"}
+    tag_feature_subset(candidates, campaign_wide_subsets)
+
+    doc = build_report_document(report, candidates)
+    assert doc.candidates[0].feature_subset == {"rnaseq": "hallmark_4384"}
+    assert "cmb_histology" not in doc.candidates[0].feature_subset
 
 
 def test_method_summaries_include_zero_accepted_methods():
