@@ -4,6 +4,12 @@ SignatureRegistry into one call. This is what proves the whole pipeline
 works end to end, not just each piece in isolation.
 
 Order of operations matters and is fixed here:
+  0. Every candidate's (method, outcome.type) pair is checked against
+     discovery.base.UNVERIFIED_OUTCOME_TYPES before anything else runs --
+     an outcome-blind method's outcome-blindness guarantee only covers
+     candidate GENERATION, not whether every downstream statistic against
+     every outcome type is trustworthy (interaction_search vs SURVIVAL is
+     the concrete case this caught).
   1. Campaign correction runs over the FULL candidate pool first (every
      candidate this campaign produced, pass or fail on the gate), since the
      correction's null distribution needs the whole pool regardless of any
@@ -25,6 +31,7 @@ from dataclasses import dataclass, field
 from discovery_engine.campaign.candidate import Candidate
 from discovery_engine.campaign.correction import CorrectionResult, run_campaign_correction
 from discovery_engine.data.cohort import CohortData
+from discovery_engine.discovery.base import assert_outcome_compatible
 from discovery_engine.outcomes import OutcomeSpec
 from discovery_engine.signatures.registry import SignatureRegistry
 from discovery_engine.validation.gate import GateResult, run_validation_gate
@@ -69,6 +76,9 @@ def run_campaign(
     alpha: float = 0.05,
     seed: int = 0,
 ) -> CampaignReport:
+    for c in candidates:
+        assert_outcome_compatible(c.method, outcome.type)
+
     correction_results = run_campaign_correction(
         candidates, data, outcome, n_permutations=correction_n_permutations, seed=seed
     )

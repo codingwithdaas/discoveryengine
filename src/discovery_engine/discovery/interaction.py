@@ -86,10 +86,38 @@ features), not a second mathematical proof:
     permutation_test p-value (CONTINUOUS, true interaction present): 0.002
 A real, large practical improvement, verified with real numbers on the
 exact case that failed before, not a certificate covering every possible
-data-generating process. SURVIVAL's Cox Wald z is further still from any
-exactness argument (a nonlinear partial-likelihood statistic, not a
-correlation at all); this fix has not been separately re-verified for
-SURVIVAL and that is a stated gap, not an assumed pass.
+data-generating process.
+
+SURVIVAL: checked, and it fails. This was originally left as "a stated
+gap, not an assumed pass" -- checked afterward, before real data, per
+explicit instruction not to carry an unresolved gap forward. Same
+adversarial cohort (correlated, skewed features), SURVIVAL outcome (Cox
+proportional hazards simulation, main effects only, no true interaction),
+production rank-residualized score:
+    single realization (seed=11):      Cox Wald z = 2.62, permutation p = 0.008
+    20 independent realizations:       3/20 significant at alpha=0.05
+                                        (expect ~1/20=5% under a calibrated null),
+                                        two of the three hit the permutation floor
+The rank-based fix was motivated by aligning with Spearman's rank-
+invariance (CONTINUOUS); there was never a real reason to expect it to
+transfer to Cox's partial likelihood, which depends on actual covariate
+VALUES within each risk set, not just their ranks, and is not invariant
+to monotonic transforms of the covariate the way Spearman is. Smaller in
+magnitude than the original raw-value bug (~15% false-positive rate here
+vs an essentially deterministic failure there), but real, not a rounding
+error, and not something campaign-level correction can fix on its own
+(correction handles multiple comparisons across candidates; it doesn't
+repair a single candidate's own miscalibrated null).
+
+Because this method is outcome-blind by design, discover() never sees
+the outcome and cannot structurally refuse to run against SURVIVAL the
+way an outcome-informed method could validate outcome.type directly.
+Guarded instead at the one place candidates and outcome actually meet:
+discovery.base.UNVERIFIED_OUTCOME_TYPES + assert_outcome_compatible,
+called from campaign.campaign.run_campaign before anything else runs.
+Do not remove "interaction_search" from that dict until a SURVIVAL-
+specific fix is verified to the same standard as CONTINUOUS/BINARY were
+here, with real numbers, not by assumption.
 
 No gate-level re-check of "does this add value beyond its own main
 effects" is needed: the residualization already targets that at score-
