@@ -9,6 +9,7 @@ dependencies = [
     "scipy",
     "lifelines",
     "torch",
+    "scikit-survival",
 ]
 
 [project.optional-dependencies]

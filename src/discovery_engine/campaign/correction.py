@@ -16,11 +16,20 @@ heterogeneous candidate pool.
 For outcome-blind candidates (the large majority: clustering, NMF,
 autoencoder latents, community modules), recomputing the statistic against a
 permuted outcome is exact, since the candidate's definition never depended
-on the outcome to begin with. For outcome-informed candidates (RSF
-importances, DeepSurv risk scores, attention weights, explicit interaction
+on the outcome to begin with. For outcome-informed candidates (RSF risk
+scores, DeepSurv risk scores, attention weights, explicit interaction
 search), `Candidate.refit` is called each permutation to actually rerun the
 outcome-dependent step, i.e. a full pipeline rerun under permutation, not a
 shortcut.
+
+(Earlier draft of this docstring said "RSF importances" here. RSF's
+candidates are the forest's aggregate predicted risk score per
+hyperparameter config, not per-feature importances treated as separate
+candidates -- see discovery/rsf.py's module docstring for why: using
+importance-ranking to nominate which features become candidates would
+need the *selection* step re-run under every permutation too, not just a
+refit of one fixed feature's association, which `Candidate.refit` isn't
+shaped for.)
 
 Every refit call is handed a `np.random.Generator` derived deterministically
 from this module's own seeded rng, and refit is contractually required to
