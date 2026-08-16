@@ -36,8 +36,9 @@ def _planted_survival_cohort(n=150, seed=0, beta=2.0):
 
 
 def test_random_survival_forest_is_exempt_from_stability_check():
-    """RSF is deliberately not in NEURAL_METHODS (see rsf.py's module
-    docstring for the empirical evidence backing this)."""
+    """RSF is empirically exempted, not in STABILITY_REQUIRED_METHODS (see
+    rsf.py's module docstring and validation.stability.EMPIRICALLY_EXEMPTED_METHODS
+    for the evidence backing this)."""
     assert requires_stability_check("random_survival_forest") is False
     candidate = Candidate(
         id="c1", method="random_survival_forest", method_params={}, outcome_blind=False,

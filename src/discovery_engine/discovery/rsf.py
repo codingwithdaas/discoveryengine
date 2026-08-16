@@ -41,7 +41,10 @@ no-signal case, so a per-candidate multi-seed stability check would do
 nothing but add cost here: the ensemble's internal averaging (hundreds, or
 even just tens, of trees) already suppresses the run-to-run variance that
 a single neural network's init-sensitivity requires stability checking to
-catch. NEURAL_METHODS intentionally does not include this method's name.
+catch. This method is registered in validation.stability's
+EMPIRICALLY_EXEMPTED_METHODS with the numbers above (not
+STABILITY_REQUIRED_METHODS -- see that module's docstring for the general
+three-category framework this decision fits into).
 """
 
 from __future__ import annotations

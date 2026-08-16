@@ -6,6 +6,23 @@ OutcomeBlindDiscoveryMethod: the signature IS the outcome-blindness proof.
 from. A method conforming to this protocol cannot leak outcome into
 candidate generation because there is nothing to leak from.
 
+That guarantee is about outcome-blindness ONLY -- this protocol does not
+claim or imply determinism, and conflating the two would be a real gap,
+not a stylistic one. clustering.py's scipy.cluster.hierarchy.linkage
+genuinely has no internal randomness at all, so it takes no seed. Other
+conforming methods (louvain.py) DO have algorithm-internal stochasticity
+(e.g. node-visitation order) and take an explicit `seed: int` via
+**params; "outcome-blind" says nothing about whether such a method's
+output is reproducible across seeds, only that the outcome never touched
+it. "Deterministic" and "stochastic but empirically verified stable" are
+different claims resting on different evidence, and a method with
+internal randomness must say which one applies, and on what evidence --
+see validation.stability's module docstring for the three-category
+framework (deterministic / STABILITY_REQUIRED_METHODS / empirically
+exempted via EMPIRICALLY_EXEMPTED_METHODS) every such method must place
+itself into explicitly. There is no default category; silence is a bug,
+not an exemption.
+
 OutcomeInformedDiscoveryMethod (Phase 4, first implemented by deepsurv.py):
 takes an outcome and an rng, and is exempt from the outcome-blindness
 guarantee by construction, not by convention, which is why it's a

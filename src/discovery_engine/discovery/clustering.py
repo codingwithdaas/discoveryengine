@@ -48,7 +48,7 @@ class HierarchicalClusteringDiscovery:
                 members = [f for f, lab in zip(feature_names, labels) if lab == cluster_id]
                 if len(members) < min_module_size:
                     continue
-                scores = _module_scores(df[members], sample_ids)
+                scores = module_scores(df[members], sample_ids)
                 candidates.append(
                     Candidate(
                         id=f"hierarchical_{modality}_k{k}_c{cluster_id}",
@@ -70,11 +70,15 @@ class HierarchicalClusteringDiscovery:
         return candidates
 
 
-def _module_scores(member_df, sample_ids: list[str]) -> dict[str, float]:
+def module_scores(member_df, sample_ids: list[str]) -> dict[str, float]:
     """Per-sample module score: mean z-score across member features.
 
     Constant features (std 0, would divide by zero) are dropped from the
-    average rather than propagating NaN into the module score.
+    average rather than propagating NaN into the module score. Shared with
+    louvain.py, which needs the identical feature-group-to-score conversion
+    for its community-detection output; made public once a second method
+    needed it (same pattern as match_units_across_seeds and
+    build_multimodal_input_matrix).
     """
     mean = member_df.mean(axis=0)
     std = member_df.std(axis=0, ddof=0)
