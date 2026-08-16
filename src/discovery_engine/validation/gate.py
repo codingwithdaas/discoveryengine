@@ -16,6 +16,8 @@ one): a candidate FAILS this gate if any of the following hold:
   - it does not add value in a joint model against existing signatures
     (only evaluated when there are existing signatures to compare against)
   - no interpretability report could be produced
+  - it is a neural-method candidate whose seed/architecture stability check
+    calibrates as "noise" (applicable neural methods only; see validation.stability)
 Every individual check's result is kept regardless of pass/fail, so a
 failed candidate's specific reasons are always in the record.
 """
@@ -101,7 +103,9 @@ def run_validation_gate(
             f"signature(s) (p={multivariate.p_value:.3f})"
         )
 
-    stability = stability_check(candidate.method)
+    stability = stability_check(candidate)
+    if stability.applicable and not stability.passed:
+        reasons.append(f"seed/architecture stability calibrated as noise ({stability.reason})")
 
     novelty = novelty_check(candidate, existing_signatures)
     if novelty.overall_classification == "fully_redundant":

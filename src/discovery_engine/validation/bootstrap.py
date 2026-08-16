@@ -28,7 +28,11 @@ CALIBRATION_BANDS = (
 )
 
 
-def _calibration_band(consistency: float) -> str:
+def calibration_band(consistency: float) -> str:
+    """Shared noise/weak/moderate/robust banding, reused by any check that
+    reports a 0-1 reproducibility rate (half-split consistency here, and
+    validation.stability's cross-seed match rate).
+    """
     for upper, label in CALIBRATION_BANDS:
         if consistency < upper:
             return label
@@ -107,7 +111,7 @@ def half_split_consistency(
         n_splits=n_splits,
         n_usable_splits=usable,
         consistency_fraction=consistency,
-        calibration=_calibration_band(consistency),
+        calibration=calibration_band(consistency),
         full_cohort_statistic=full_stat,
     )
 
