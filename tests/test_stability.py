@@ -35,6 +35,27 @@ def test_neural_candidate_matched_all_other_seeds_is_robust():
     assert result.passed is True
 
 
+def test_neural_candidate_matched_some_but_not_all_seeds_is_weak_and_passes():
+    """The case that actually motivated the discovery-time-filtering ->
+    provenance-carrying correction before Phase 3: a unit that reproduces in
+    1 of 2 other seeds is neither the matched-all-seeds "robust" case nor
+    the matched-no-seeds "noise" case. It must still become a Candidate
+    (this dict IS the provenance of an emitted candidate, never a discarded
+    one) with fraction 0.5 landing in "weak", which passes the gate (only
+    "noise" fails), distinct from both extremes.
+    """
+    result = stability_check(_candidate("autoencoder", {
+        "n_seeds_total": 2, "n_seeds_matched": 1,
+        "matched_seed_fractions": [0.85, 0.3],
+        "min_abs_correlation_across_seeds": 0.3,
+    }))
+    assert result.applicable is True
+    assert result.stability_fraction == pytest.approx(0.5)
+    assert result.calibration == "weak"
+    assert result.calibration not in ("robust", "noise")
+    assert result.passed is True
+
+
 def test_neural_candidate_matched_no_other_seeds_is_noise_and_fails():
     result = stability_check(_candidate("autoencoder", {
         "n_seeds_total": 2, "n_seeds_matched": 0,
