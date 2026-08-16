@@ -9,6 +9,7 @@ from discovery_engine.campaign.registry import CandidateRegistry
 from discovery_engine.data.cohort import CohortData
 from discovery_engine.discovery.deepsurv import DeepSurvDiscovery, _cox_loss
 from discovery_engine.outcomes import OutcomeSpec, OutcomeType
+from discovery_engine.validation.stability import TrainedRun, match_units_across_seeds, stability_check
 
 
 def _planted_survival_cohort(n=150, seed=0, beta=2.0):
@@ -115,6 +116,43 @@ def test_refit_reruns_from_scratch_and_carries_no_stability_key():
 
     assert refit_result.scores != candidate.scores
     assert "stability" not in refit_result.provenance
+
+
+def test_deepsurv_partial_seed_match_produces_weak_calibration_and_passes():
+    """Closes the loop explicitly for DeepSurv's single-unit (n_samples, 1)
+    risk-score shape specifically, running the real match_units_across_seeds
+    function (not a hand-typed provenance dict) through stability_check:
+    1-of-2 other seeds matching must land in "weak", distinct from the
+    matched-all "robust" and matched-none "noise" cases, and must still
+    pass the gate. This is the same underlying function the autoencoder's
+    partial-match test already covers, but this confirms the (n, 1) shape
+    specifically produces the identical behavior, not inferred from reuse.
+    """
+    n = 200
+    ramp = np.arange(n, dtype=float).reshape(-1, 1)
+    ref = TrainedRun(latent_scores=ramp)
+    run1 = TrainedRun(latent_scores=ramp.copy())  # matches
+    rng = np.random.default_rng(21)
+    run2 = TrainedRun(latent_scores=rng.normal(size=(n, 1)))  # doesn't match
+
+    matches = match_units_across_seeds([ref, run1, run2], threshold=0.7)
+    assert len(matches) == 1
+    stability_info = matches[0]
+    assert stability_info["n_seeds_total"] == 2
+    assert stability_info["n_seeds_matched"] == 1
+
+    candidate = Candidate(
+        id="deepsurv_partial_match_test", method="deepsurv", method_params={}, outcome_blind=False,
+        modality_touch=["m1"], sample_ids=[f"S{i}" for i in range(n)],
+        scores={f"S{i}": 0.0 for i in range(n)},
+        provenance={"stability": stability_info},
+    )
+    result = stability_check(candidate)
+    assert result.applicable is True
+    assert result.stability_fraction == pytest.approx(0.5)
+    assert result.calibration == "weak"
+    assert result.calibration not in ("robust", "noise")
+    assert result.passed is True
 
 
 def test_deepsurv_candidate_survives_real_campaign_correction_without_raising():
