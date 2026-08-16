@@ -12,6 +12,7 @@ dependencies = [
     "scikit-survival",
     "scikit-learn",
     "networkx",
+    "openpyxl",
 ]
 
 [project.optional-dependencies]
