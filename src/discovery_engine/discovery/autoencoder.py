@@ -27,7 +27,6 @@ Two things make this different from the classical baseline:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 
 import numpy as np
 import torch
@@ -35,6 +34,8 @@ from torch import nn
 
 from discovery_engine.campaign.candidate import Candidate
 from discovery_engine.data.cohort import CohortData
+from discovery_engine.discovery.multimodal_input import build_multimodal_input_matrix
+from discovery_engine.validation.stability import TrainedRun, match_units_across_seeds
 
 logger = logging.getLogger(__name__)
 
@@ -87,11 +88,6 @@ def _loss(recon: torch.Tensor, x: torch.Tensor, mu: torch.Tensor, logvar: torch.
     return recon_loss + beta * kl
 
 
-@dataclass
-class _TrainedRun:
-    latent_scores: np.ndarray  # (n_samples, latent_dim), rows aligned to sample_ids order
-
-
 class AutoencoderDiscovery:
     def __init__(self, variational: bool = False):
         self.variational = variational
@@ -112,7 +108,7 @@ class AutoencoderDiscovery:
         seed: int = 0,
     ) -> list[Candidate]:
         hidden_dims = list(hidden_dims) if hidden_dims is not None else [128, 64]
-        x, sample_ids, feature_names, modality_info = _build_input_matrix(data, modalities)
+        x, sample_ids, feature_names, modality_info = build_multimodal_input_matrix(data, modalities)
 
         rng = np.random.default_rng(seed)
         candidates: list[Candidate] = []
@@ -125,7 +121,7 @@ class AutoencoderDiscovery:
                 )
                 for _ in range(n_seeds)
             ]
-            matches = _match_units_across_seeds(runs, stability_threshold)
+            matches = match_units_across_seeds(runs, stability_threshold)
             ref_scores = runs[0].latent_scores
 
             for unit_idx in range(latent_dim):
@@ -156,48 +152,6 @@ class AutoencoderDiscovery:
         return candidates
 
 
-def _build_input_matrix(
-    data: CohortData, modalities: list[str]
-) -> tuple[np.ndarray, list[str], list[str], dict]:
-    dfs = [data.modalities[m] for m in modalities]
-    common_ids = sorted(set.intersection(*(set(df.index) for df in dfs)))
-    if len(common_ids) < 10:
-        raise ValueError(f"only {len(common_ids)} samples shared across modalities {modalities}, too few to train")
-
-    all_ids: set[str] = set()
-    for df in dfs:
-        all_ids.update(df.index)
-    dropped = sorted(all_ids - set(common_ids))
-    if dropped:
-        logger.info(
-            "autoencoder discovery: %d sample(s) dropped, not present in every requested "
-            "modality %s: %s", len(dropped), modalities, dropped[:10],
-        )
-
-    blocks: list[np.ndarray] = []
-    feature_names: list[str] = []
-    modality_info: dict = {}
-    for m, df in zip(modalities, dfs):
-        sub = df.loc[common_ids]
-        mean = sub.mean(axis=0)
-        std = sub.std(axis=0, ddof=0)
-        usable = std[std > 0].index
-        z = (sub[usable] - mean[usable]) / std[usable]
-        # Equalize each modality's total contributed variance regardless of
-        # its feature count, so a ~20k-feature block cannot drown a
-        # ~200-feature block purely by having more columns.
-        z = z / np.sqrt(max(1, len(usable)))
-        blocks.append(z.to_numpy())
-        feature_names.extend(f"{m}:{f}" for f in usable)
-        modality_info[m] = {
-            "n_features_used": len(usable),
-            "n_features_dropped_zero_variance": len(sub.columns) - len(usable),
-        }
-
-    x = np.concatenate(blocks, axis=1).astype(np.float32)
-    return x, common_ids, feature_names, modality_info
-
-
 def _train_one_seed(
     x: np.ndarray,
     latent_dim: int,
@@ -208,7 +162,7 @@ def _train_one_seed(
     max_epochs: int,
     patience: int,
     rng: np.random.Generator,
-) -> _TrainedRun:
+) -> TrainedRun:
     torch.manual_seed(int(rng.integers(0, 2**31 - 1)))
 
     n = x.shape[0]
@@ -256,43 +210,4 @@ def _train_one_seed(
         mu_full, _ = model.encode(x_t)
         latent_scores = mu_full.numpy()
 
-    return _TrainedRun(latent_scores=latent_scores)
-
-
-def _match_units_across_seeds(runs: list[_TrainedRun], threshold: float) -> list[dict]:
-    """For every unit in runs[0] (the reference seed), find its best-matching
-    unit, by |Pearson r| over the shared samples, in each OTHER run. Returns
-    one raw measurement dict per reference unit, in unit order; does not
-    decide pass/fail (that's validation.stability.stability_check's job).
-    """
-    ref = runs[0].latent_scores
-    latent_dim = ref.shape[1]
-    other_runs = runs[1:]
-
-    results = []
-    for unit_idx in range(latent_dim):
-        ref_col = ref[:, unit_idx]
-        fractions = [
-            max(
-                (abs(_safe_corr(ref_col, other.latent_scores[:, j])) for j in range(other.latent_scores.shape[1])),
-                default=0.0,
-            )
-            for other in other_runs
-        ]
-        n_total = len(other_runs)
-        n_matched = sum(1 for f in fractions if f >= threshold)
-        results.append(
-            {
-                "n_seeds_total": n_total,
-                "n_seeds_matched": n_matched,
-                "matched_seed_fractions": fractions,
-                "min_abs_correlation_across_seeds": min(fractions) if fractions else 0.0,
-            }
-        )
-    return results
-
-
-def _safe_corr(a: np.ndarray, b: np.ndarray) -> float:
-    if np.std(a) == 0 or np.std(b) == 0:
-        return 0.0
-    return float(np.corrcoef(a, b)[0, 1])
+    return TrainedRun(latent_scores=latent_scores)

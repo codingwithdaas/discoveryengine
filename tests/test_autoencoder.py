@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from discovery_engine.data.cohort import CohortData
-from discovery_engine.discovery.autoencoder import AutoencoderDiscovery, _TrainedRun, _match_units_across_seeds
-from discovery_engine.validation.stability import stability_check
+from discovery_engine.discovery.autoencoder import AutoencoderDiscovery
+from discovery_engine.validation.stability import TrainedRun, match_units_across_seeds, stability_check
 
 
 def _planted_multimodal_cohort(n=150, seed=0):
@@ -28,12 +28,12 @@ def test_match_units_across_seeds_direct():
     depend on training convergence at all.
     """
     ramp = np.arange(200, dtype=float).reshape(-1, 1)
-    ref = _TrainedRun(latent_scores=ramp)
-    run1 = _TrainedRun(latent_scores=ramp.copy())  # perfect match
+    ref = TrainedRun(latent_scores=ramp)
+    run1 = TrainedRun(latent_scores=ramp.copy())  # perfect match
     rng = np.random.default_rng(42)
-    run2 = _TrainedRun(latent_scores=rng.normal(size=(200, 1)))  # ~uncorrelated
+    run2 = TrainedRun(latent_scores=rng.normal(size=(200, 1)))  # ~uncorrelated
 
-    matches = _match_units_across_seeds([ref, run1, run2], threshold=0.7)
+    matches = match_units_across_seeds([ref, run1, run2], threshold=0.7)
     assert len(matches) == 1
     m = matches[0]
     assert m["n_seeds_total"] == 2
