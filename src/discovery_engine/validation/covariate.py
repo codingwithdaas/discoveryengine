@@ -120,7 +120,7 @@ def freedman_lane_core(
 ) -> tuple[float, float]:
     """The residualize-permute-refit engine behind freedman_lane_test,
     exposed so validation.multivariate can reuse it with a different
-    adjustment matrix (other validated signatures' scores instead of
+    adjustment matrix (other accepted signatures' scores instead of
     clinical covariates) rather than duplicating the permutation loop.
     """
     beta_reduced, *_ = np.linalg.lstsq(z_with_intercept, y, rcond=None)

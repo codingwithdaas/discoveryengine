@@ -12,7 +12,7 @@ Aggregate pass rule (documented so it's a stated decision, not an implicit
 one): a candidate FAILS this gate if any of the following hold:
   - half-split consistency calibration is "noise"
   - a Freedman-Lane covariate-adjusted p-value (when computable) is >= 0.05
-  - it is "fully_redundant" against an already-validated signature
+  - it is "fully_redundant" against an already-accepted signature
   - it does not add value in a joint model against existing signatures
     (only evaluated when there are existing signatures to compare against)
   - no interpretability report could be produced
@@ -99,7 +99,7 @@ def run_validation_gate(
     )
     if existing_signatures and multivariate.p_value >= 0.05:
         reasons.append(
-            f"does not add value beyond {len(existing_signatures)} already-validated "
+            f"does not add value beyond {len(existing_signatures)} already-accepted "
             f"signature(s) (p={multivariate.p_value:.3f})"
         )
 
@@ -109,7 +109,7 @@ def run_validation_gate(
 
     novelty = novelty_check(candidate, existing_signatures)
     if novelty.overall_classification == "fully_redundant":
-        reasons.append("fully redundant with an already-validated signature")
+        reasons.append("fully redundant with an already-accepted signature")
 
     interpretability = correlation_interpretability_report(candidate, data)
     if not interpretability.top_features:

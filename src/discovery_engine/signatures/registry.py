@@ -1,10 +1,13 @@
 """SignatureRegistry: the persistent, cross-campaign, cross-cohort record of
-every VALIDATED signature (as opposed to campaign.registry.CandidateRegistry,
+every ACCEPTED signature (as opposed to campaign.registry.CandidateRegistry,
 which is the ephemeral, per-campaign log of every candidate generated,
-validated or not, used for correction).
+accepted or not, used for correction). "Accepted" means it passed the gate
+and survived campaign-level correction, not "validated" in any deeper
+epistemic sense -- see reporting/language.py for why that word is avoided
+throughout this project's user-facing output.
 
 SQLite (stdlib) rather than a flat file: this one needs real queries
-(novelty checks against everything validated so far, optionally scoped to a
+(novelty checks against everything accepted so far, optionally scoped to a
 cohort) as the registry grows across cohorts and campaigns, which a
 directory of JSON files would need to reinvent indexing for.
 """

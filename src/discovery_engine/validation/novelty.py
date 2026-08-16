@@ -1,4 +1,4 @@
-"""Novelty scoring against everything already validated.
+"""Novelty scoring against everything already accepted.
 
 A newly discovered candidate can be individually significant against an
 outcome while being fully redundant with an already-known signature.
@@ -9,7 +9,7 @@ so, since a high-correlation-but-different-features candidate and a
 low-correlation-but-same-features candidate are both cases worth a human
 looking twice at.
 
-Existing validated signatures are represented as plain Candidate objects
+Existing accepted signatures are represented as plain Candidate objects
 (what the SignatureRegistry stores) rather than inventing a parallel type.
 """
 

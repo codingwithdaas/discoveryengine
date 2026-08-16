@@ -1,6 +1,6 @@
-""""Adds value beyond X" test: a candidate and an already-validated signature
+""""Adds value beyond X" test: a candidate and an already-accepted signature
 can both be individually significant while one is fully redundant with the
-other. This tests the candidate jointly against every already-validated
+other. This tests the candidate jointly against every already-accepted
 signature in the registry, not just alone.
 
 CONTINUOUS/BINARY outcomes reuse the same Freedman-Lane residualize-permute
