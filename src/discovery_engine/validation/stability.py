@@ -17,13 +17,18 @@ exactly the kind of gap this project's methodology exists to catch.
 
 2. STABILITY_REQUIRED_METHODS: internal randomness that is NOT exempted --
    either because skill rule 2 mandates the check structurally regardless
-   of empirical results (every method in here today is neural: a single
-   trained network is one sample of a random process, not a stable fact
-   about the data, full stop), or because a method WAS empirically checked
-   and the check came back mixed/unstable, so it needs the identical
-   per-candidate provenance and gate treatment even though it isn't
-   neural. Nothing here is neural-specific in mechanism; the set is named
-   for what's actually in it today, not for an assumption about why.
+   of empirical results (neural methods: a single trained network is one
+   sample of a random process, not a stable fact about the data, full
+   stop), or because a method WAS empirically checked and the check came
+   back mixed/unstable, so it needs the identical per-candidate provenance
+   and gate treatment even though it isn't neural -- nmf.py is exactly
+   this case: low rank was stable, but the actual overparameterized/
+   underdetermined regime (rank approaching min(n_samples, n_features))
+   showed real cross-seed instability (some components with zero seed
+   matches, min |r| as low as 0.24), so it's here on the evidence, not
+   the architecture. Nothing in this set's mechanism is neural-specific;
+   it's named for what's actually in it today, not for an assumption
+   about why.
    Candidates from these methods MUST carry provenance["stability"]:
        {
            "n_seeds_total": int,           # other seeds compared against
@@ -72,6 +77,7 @@ STABILITY_REQUIRED_METHODS: set[str] = {
     "variational_autoencoder",
     "deepsurv",
     "attention",
+    "nmf",
 }
 
 EMPIRICALLY_EXEMPTED_METHODS: dict[str, str] = {
