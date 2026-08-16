@@ -1,0 +1,24 @@
+[project]
+name = "discovery-engine"
+version = "0.1.0"
+description = "Discovery engine for hidden signatures in high-dimensional cancer genomics cohort data"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "lifelines",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
