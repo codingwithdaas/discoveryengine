@@ -1,7 +1,7 @@
 import pytest
 
 from discovery_engine.reporting.render_markdown import to_markdown
-from discovery_engine.reporting.schema import build_report_document
+from discovery_engine.reporting.schema import ScopeLimitation, build_report_document
 from tests.test_reporting_schema import _make_gate_result, _make_report
 
 _BANNED = ["validated", "establishes", "proves", "statistically independent", "recapitulates", "the dominant signal"]
@@ -52,6 +52,31 @@ def test_no_banned_language_in_rendered_markdown_output():
     for phrase in _BANNED:
         assert phrase not in md
     assert "—" not in to_markdown(doc)
+
+
+def test_scope_limitations_rendered_prominently_before_candidate_table():
+    gate = _make_gate_result("c1")
+    report, candidates = _make_report([("c1", "hierarchical_clustering", True, gate, 0.001)])
+    limitation = ScopeLimitation(
+        method="attention", modality="rnaseq", feature_subset="hallmark_4384",
+        reason="did not converge within the shared epoch budget at ~4450 features",
+    )
+    doc = build_report_document(report, candidates, scope_limitations=[limitation])
+    md = to_markdown(doc)
+
+    assert "## Scope limitations" in md
+    assert "attention" in md and "hallmark_4384" in md
+    assert "did not converge within the shared epoch budget" in md
+    # must appear before the candidate table, not buried after it
+    assert md.index("## Scope limitations") < md.index("## All candidates")
+
+
+def test_no_scope_limitations_section_when_none_recorded():
+    gate = _make_gate_result("c1")
+    report, candidates = _make_report([("c1", "hierarchical_clustering", True, gate, 0.001)])
+    doc = build_report_document(report, candidates)
+    md = to_markdown(doc)
+    assert "## Scope limitations" not in md
 
 
 if __name__ == "__main__":

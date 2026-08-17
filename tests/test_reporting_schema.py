@@ -234,6 +234,28 @@ def test_feature_subset_only_tags_modalities_the_candidate_actually_touches():
     assert "cmb_histology" not in doc.candidates[0].feature_subset
 
 
+def test_scope_limitations_are_recorded_explicitly_not_derived_from_candidates():
+    """A method x modality x subset combination that was deliberately
+    never attempted (e.g. attention excluded from the Hallmark subset)
+    has no candidate to derive it from -- must be passed explicitly and
+    survive into the document unchanged.
+    """
+    from discovery_engine.reporting.schema import ScopeLimitation
+
+    gate = _make_gate_result("c1")
+    report, candidates = _make_report([("c1", "hierarchical_clustering", True, gate, 0.001)])
+    limitation = ScopeLimitation(
+        method="attention", modality="rnaseq", feature_subset="hallmark_4384",
+        reason="did not converge within the shared epoch budget at ~4450 features",
+    )
+
+    doc = build_report_document(report, candidates, scope_limitations=[limitation])
+    assert doc.scope_limitations == [limitation]
+
+    doc_empty = build_report_document(report, candidates)
+    assert doc_empty.scope_limitations == []
+
+
 def test_method_summaries_include_zero_accepted_methods():
     """Negative-result reporting per skill rule 5: a method with zero
     accepted candidates must still appear in method_summaries, not be

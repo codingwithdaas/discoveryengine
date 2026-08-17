@@ -49,6 +49,27 @@ method not listed. The generic correlation signal is never dropped even
 when a preferred signal exists: it's always present as
 `secondary_correlation_signal`, the same "keep both, don't replace"
 precedent as half-split-and-bootstrap-CI, median-split-and-extreme-groups.
+
+`scope_limitations` records a method x modality x feature-subset
+combination that was DELIBERATELY never attempted, with a reason -- not
+a candidate that was tried and rejected (those already appear fully in
+`.candidates`; nothing there was skipped). Concrete case this exists for:
+attention was excluded from the Hallmark-4384 RNA-seq subset in the
+first real TCGA-BLCA campaign, because its per-feature identity embedding
+table (unlike autoencoder/DeepSurv/RSF's input scaling) made convergence
+within the shared max_epochs budget genuinely uncertain at ~4,450
+features -- confirmed directly (every one of 100 epochs showed real,
+monotonic, still-ACCELERATING improvement, not a plateau) before deciding
+to exclude rather than guess at a larger epoch budget. That's a stated
+scope limit, not a silent gap, and it needs to be as visible in the
+report as an accepted or rejected candidate would be -- someone reading
+only `.candidates` later would see attention's variance-1000 and CMB
+results and could easily assume attention covered every subset the
+campaign used, exactly the kind of misreading `feature_subset` itself
+exists to prevent. `build_report_document` takes `scope_limitations` as
+an explicit argument (never derived from `candidates`, since by
+definition no candidate exists for an excluded combination) and renders
+it prominently, before the candidate table, in both JSON and Markdown.
 """
 
 from __future__ import annotations
@@ -78,6 +99,14 @@ class MethodSummary:
 
 
 @dataclass
+class ScopeLimitation:
+    method: str
+    modality: str
+    feature_subset: str
+    reason: str
+
+
+@dataclass
 class CandidateReportEntry:
     candidate_id: str
     method: str
@@ -103,10 +132,15 @@ class CampaignReportDocument:
     n_accepted: int
     n_rejected: int
     method_summaries: list[MethodSummary] = field(default_factory=list)
+    scope_limitations: list[ScopeLimitation] = field(default_factory=list)
     candidates: list[CandidateReportEntry] = field(default_factory=list)
 
 
-def build_report_document(campaign_report: CampaignReport, candidates: list[Candidate]) -> CampaignReportDocument:
+def build_report_document(
+    campaign_report: CampaignReport,
+    candidates: list[Candidate],
+    scope_limitations: list[ScopeLimitation] | None = None,
+) -> CampaignReportDocument:
     candidates_by_id = {c.id: c for c in candidates}
 
     entries = [
@@ -124,6 +158,7 @@ def build_report_document(campaign_report: CampaignReport, candidates: list[Cand
         n_accepted=sum(1 for e in entries if e.accepted),
         n_rejected=sum(1 for e in entries if not e.accepted),
         method_summaries=_summarize_methods(entries),
+        scope_limitations=list(scope_limitations) if scope_limitations else [],
         candidates=entries,
     )
 

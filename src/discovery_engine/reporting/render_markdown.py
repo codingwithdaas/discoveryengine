@@ -28,6 +28,20 @@ def to_markdown(document: CampaignReportDocument) -> str:
     )
     lines.append("")
 
+    if document.scope_limitations:
+        lines.append("## Scope limitations")
+        lines.append("")
+        lines.append(
+            "Method x modality x feature-subset combinations deliberately NOT attempted this "
+            "campaign, stated explicitly rather than left to be inferred from their absence below:"
+        )
+        lines.append("")
+        lines.append("| Method | Modality | Feature subset | Reason |")
+        lines.append("|---|---|---|---|")
+        for lim in document.scope_limitations:
+            lines.append(f"| {lim.method} | {lim.modality} | {lim.feature_subset} | {lim.reason} |")
+        lines.append("")
+
     lines.append("## Candidates by method")
     lines.append("")
     lines.append("| Method | Candidates | Accepted |")
