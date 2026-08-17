@@ -41,6 +41,7 @@ given the same seed.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -50,6 +51,7 @@ from discovery_engine.data.cohort import CohortData
 from discovery_engine.outcomes import OutcomeSpec, association_statistic
 
 _MIN_SD = 1e-8
+_logger = logging.getLogger(__name__)
 
 
 class RefitDidNotChangeError(RuntimeError):
@@ -187,6 +189,8 @@ def _null_statistics(
                         "outcome, not return cached/stale values"
                     )
                 null_stats[b, i] = association_statistic(permuted_outcome, refit_candidate.scores)
+
+        _logger.info("campaign correction: permutation batch %d/%d complete (%d candidates)", b + 1, n_permutations, n)
 
     return null_stats
 

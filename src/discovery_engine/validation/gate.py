@@ -37,6 +37,7 @@ non-trivial N should pass a smaller value explicitly.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 from discovery_engine.campaign.candidate import Candidate
@@ -49,6 +50,8 @@ from discovery_engine.validation.interpretability import InterpretabilityReport,
 from discovery_engine.validation.multivariate import MultivariateAddsValueResult, multivariate_adds_value
 from discovery_engine.validation.novelty import NoveltyResult, novelty_check
 from discovery_engine.validation.stability import StabilityResult, stability_check
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -129,7 +132,7 @@ def run_validation_gate(
     if not interpretability.top_features:
         reasons.append("no interpretability report could be produced")
 
-    return GateResult(
+    result = GateResult(
         candidate_id=candidate.id,
         half_split=half_split,
         bootstrap_ci=bootstrap_ci,
@@ -143,3 +146,5 @@ def run_validation_gate(
         passed=len(reasons) == 0,
         failure_reasons=reasons,
     )
+    _logger.info("gate: candidate %s (%s) complete, passed=%s", candidate.id, candidate.method, result.passed)
+    return result
