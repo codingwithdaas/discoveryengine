@@ -6,3 +6,13 @@ __pycache__/
 .claude-flow/
 *.db
 *.jsonl
+
+# Real-data-derived outputs: never belong in version control, regardless of
+# how the current set of scripts happens to be laid out. Every campaign run
+# this project has produced was written to a scratch directory outside this
+# repo, never inside it -- these patterns make that a structural guarantee
+# rather than an accident of where a future script writes its output.
+*_report.json
+*_report.md
+/data/
+/outputs/
