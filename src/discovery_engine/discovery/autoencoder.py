@@ -106,6 +106,7 @@ class AutoencoderDiscovery:
         patience: int = 15,
         stability_threshold: float = 0.7,
         seed: int = 0,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         hidden_dims = list(hidden_dims) if hidden_dims is not None else [128, 64]
         x, sample_ids, feature_names, modality_info = build_multimodal_input_matrix(data, modalities)
@@ -128,7 +129,7 @@ class AutoencoderDiscovery:
                 scores = {sid: float(ref_scores[i, unit_idx]) for i, sid in enumerate(sample_ids)}
                 candidates.append(
                     Candidate(
-                        id=f"{self.name}_{'_'.join(modalities)}_ld{latent_dim}_u{unit_idx}",
+                        id=f"{self.name}_{'_'.join(modalities)}_ld{latent_dim}_u{unit_idx}" + (f"_fs{feature_subset}" if feature_subset else ""),
                         method=self.name,
                         method_params={
                             "latent_dim": latent_dim,

@@ -75,6 +75,7 @@ class LouvainDiscovery:
         min_abs_correlation: float = 0.2,
         min_module_size: int = 2,
         seed: int = 0,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         df = data.modalities[modality]
         sample_ids = list(df.index)
@@ -94,7 +95,7 @@ class LouvainDiscovery:
                 scores = module_scores(df[members], sample_ids)
                 candidates.append(
                     Candidate(
-                        id=f"louvain_{modality}_res{resolution}_c{community_idx}",
+                        id=f"louvain_{modality}_res{resolution}_c{community_idx}" + (f"_fs{feature_subset}" if feature_subset else ""),
                         method=self.name,
                         method_params={
                             "resolution": resolution,

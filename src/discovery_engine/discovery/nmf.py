@@ -82,6 +82,7 @@ class NMFDiscovery:
         max_iter: int = 300,
         stability_threshold: float = 0.7,
         seed: int = 0,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         df = data.modalities[modality]
         sample_ids = list(df.index)
@@ -102,7 +103,7 @@ class NMFDiscovery:
                 loadings = {fname: float(ref.H[unit_idx, j]) for j, fname in enumerate(feature_names)}
                 candidates.append(
                     Candidate(
-                        id=f"nmf_{modality}_r{n_components}_c{unit_idx}",
+                        id=f"nmf_{modality}_r{n_components}_c{unit_idx}" + (f"_fs{feature_subset}" if feature_subset else ""),
                         method=self.name,
                         method_params={
                             "n_components": n_components, "component_idx": unit_idx,

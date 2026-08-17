@@ -51,6 +51,7 @@ class HierarchicalClusteringDiscovery:
         k_values: list[int],
         linkage_method: str = "average",
         min_module_size: int = 2,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         df = data.modalities[modality]
         sample_ids = list(df.index)
@@ -83,7 +84,7 @@ class HierarchicalClusteringDiscovery:
                 scores = module_scores(df[members], sample_ids)
                 candidates.append(
                     Candidate(
-                        id=f"hierarchical_{modality}_k{k}_c{cluster_id}",
+                        id=f"hierarchical_{modality}_k{k}_c{cluster_id}" + (f"_fs{feature_subset}" if feature_subset else ""),
                         method=self.name,
                         method_params={
                             "k": k,

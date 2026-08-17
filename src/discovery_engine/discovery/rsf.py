@@ -68,6 +68,7 @@ class RandomSurvivalForestDiscovery:
         rng: np.random.Generator,
         modalities: list[str],
         forest_configs: list[dict],
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         if outcome.type is not OutcomeType.SURVIVAL:
             raise ValueError("RandomSurvivalForestDiscovery requires a SURVIVAL outcome")
@@ -86,7 +87,7 @@ class RandomSurvivalForestDiscovery:
             scores = {sid: float(risk[i]) for i, sid in enumerate(sample_ids)}
             candidates.append(
                 Candidate(
-                    id=f"random_survival_forest_{'_'.join(modalities)}_{_config_id(config)}",
+                    id=f"random_survival_forest_{'_'.join(modalities)}_{_config_id(config)}" + (f"_fs{feature_subset}" if feature_subset else ""),
                     method=self.name,
                     method_params={"modalities": list(modalities), **config},
                     outcome_blind=False,

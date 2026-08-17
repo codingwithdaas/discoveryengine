@@ -181,6 +181,7 @@ class InteractionSearchDiscovery:
         data: CohortData,
         modality: str,
         feature_pairs: list[tuple[str, str]],
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         df = data.modalities[modality]
         sample_ids = list(df.index)
@@ -200,7 +201,7 @@ class InteractionSearchDiscovery:
             scores = {sid: float(residual[i]) for i, sid in enumerate(sample_ids)}
             candidates.append(
                 Candidate(
-                    id=f"interaction_{modality}_{a}_{b}",
+                    id=f"interaction_{modality}_{a}_{b}" + (f"_fs{feature_subset}" if feature_subset else ""),
                     method=self.name,
                     method_params={"modality": modality, "feature_a": a, "feature_b": b},
                     outcome_blind=True,

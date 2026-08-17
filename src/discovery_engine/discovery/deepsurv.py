@@ -110,6 +110,7 @@ class DeepSurvDiscovery:
         max_epochs: int = 200,
         patience: int = 15,
         stability_threshold: float = 0.7,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         if outcome.type is not OutcomeType.SURVIVAL:
             raise ValueError("DeepSurvDiscovery requires a SURVIVAL outcome")
@@ -135,7 +136,7 @@ class DeepSurvDiscovery:
             scores = {sid: float(ref_scores[i, 0]) for i, sid in enumerate(sample_ids)}
             candidates.append(
                 Candidate(
-                    id=f"deepsurv_{'_'.join(modalities)}_h{'-'.join(map(str, hidden_dims))}",
+                    id=f"deepsurv_{'_'.join(modalities)}_h{'-'.join(map(str, hidden_dims))}" + (f"_fs{feature_subset}" if feature_subset else ""),
                     method=self.name,
                     method_params={
                         "modalities": list(modalities),

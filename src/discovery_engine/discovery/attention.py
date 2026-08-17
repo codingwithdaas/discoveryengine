@@ -135,6 +135,7 @@ class AttentionDiscovery:
         max_epochs: int = 200,
         patience: int = 15,
         stability_threshold: float = 0.7,
+        feature_subset: str | None = None,
     ) -> list[Candidate]:
         x, sample_ids, feature_names, modality_info = build_multimodal_input_matrix(data, modalities)
         sub_outcome = outcome.subset(sample_ids)
@@ -163,7 +164,7 @@ class AttentionDiscovery:
 
             candidates.append(
                 Candidate(
-                    id=f"attention_{'_'.join(modalities)}_d{d_model}_h{n_heads}",
+                    id=f"attention_{'_'.join(modalities)}_d{d_model}_h{n_heads}" + (f"_fs{feature_subset}" if feature_subset else ""),
                     method=self.name,
                     method_params={
                         "modalities": list(modalities), "d_model": d_model, "n_heads": n_heads, "n_seeds": n_seeds,
