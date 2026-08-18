@@ -14,5 +14,6 @@ __pycache__/
 # rather than an accident of where a future script writes its output.
 *_report.json
 *_report.md
+*characterization*.md
 /data/
 /outputs/
