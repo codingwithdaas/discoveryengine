@@ -13,6 +13,7 @@ dependencies = [
     "scikit-learn",
     "networkx",
     "openpyxl",
+    "gseapy",
 ]
 
 [project.optional-dependencies]
