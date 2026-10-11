@@ -28,7 +28,7 @@ Cancer datasets work the same way. A single tumor sample has thousands of measur
 
 ## How it was tested
 
-Before touching real patient data, the engine was run on **synthetic data with signals planted on purpose**, to check that it finds real signals and rejects fake ones. The test suite (60+ tests) is in `tests/`.
+Before touching real patient data, the engine was run on **synthetic data with signals planted on purpose**, to check that it finds real signals and rejects fake ones. The test suite (150 tests) is in `tests/`.
 
 It was then run on public TCGA bladder cancer data. The real run exposed bugs that synthetic tests had missed (for example, two candidates silently sharing an ID), and those were fixed and committed. That history is visible in the commit log. No patient data or results are included in this repository.
 
