@@ -17,3 +17,14 @@ __pycache__/
 *characterization*.md
 /data/
 /outputs/
+
+# Documents and figures derived from real data: keep out of the repo
+*.docx
+*.png
+*.xlsx
+*.csv
+*.tsv
+*.h5
+*.parquet
+*.pkl
+ 
