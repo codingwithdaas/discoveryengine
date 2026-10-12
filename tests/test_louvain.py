@@ -68,12 +68,49 @@ def test_discover_is_reproducible_given_same_seed():
     assert [c.scores for c in c1] == [c.scores for c in c2]
 
 
-def test_louvain_is_empirically_exempted_from_stability_check():
+def test_louvain_candidates_carry_cross_seed_stability_and_are_checked():
+    """Louvain was exempted on synthetic evidence; on real TCGA-BLCA RNA-seq
+    its communities changed with the seed, so every candidate now carries a
+    per-candidate stability record and the gate checks it."""
     cohort, _ = _cohort_with_planted_module()
-    candidates = LouvainDiscovery().discover(cohort, modality="rnaseq", resolutions=[1.0])
+    candidates = LouvainDiscovery().discover(cohort, modality="rnaseq", resolutions=[1.0], n_seeds=3)
+    assert candidates
+    for c in candidates:
+        info = c.provenance["stability"]
+        assert info["n_seeds_total"] == 2
+        assert len(info["matched_seed_fractions"]) == 2
+        assert len(info["best_member_jaccard_per_other_seed"]) == 2
+        assert all(0.0 <= j <= 1.0 for j in info["best_member_jaccard_per_other_seed"])
     result = stability_check(candidates[0])
-    assert result.applicable is False
-    assert "empirically exempted" in result.reason
+    assert result.applicable is True
+    assert result.calibration is not None
+
+
+def test_planted_module_is_stable_across_seeds():
+    cohort, planted = _cohort_with_planted_module()
+    candidates = LouvainDiscovery().discover(cohort, modality="rnaseq", resolutions=[1.0], n_seeds=3)
+    best = max(candidates, key=lambda c: len(set(c.provenance["member_features"]) & set(planted)))
+    assert stability_check(best).passed
+
+
+def test_unstable_partition_is_flagged_as_noise():
+    """Pure-noise features above the edge threshold give arbitrary
+    communities; at least one of them should fail to reproduce across seeds."""
+    rng = np.random.default_rng(3)
+    base = rng.normal(size=(80, 1))
+    # weakly, uniformly correlated block: many near-equivalent partitions
+    X = base * 0.45 + rng.normal(size=(80, 60))
+    df = pd.DataFrame(X, index=[f"s{i}" for i in range(80)], columns=[f"g{j}" for j in range(60)])
+    candidates = LouvainDiscovery().discover(CohortData({"rnaseq": df}), modality="rnaseq",
+                                             resolutions=[1.0], min_abs_correlation=0.1, n_seeds=3)
+    jaccards = [min(c.provenance["stability"]["best_member_jaccard_per_other_seed"]) for c in candidates]
+    assert min(jaccards) < 1.0
+
+
+def test_n_seeds_below_two_is_rejected():
+    cohort, _ = _cohort_with_planted_module()
+    with pytest.raises(ValueError, match="n_seeds"):
+        LouvainDiscovery().discover(cohort, modality="rnaseq", resolutions=[1.0], n_seeds=1)
 
 
 def test_louvain_candidate_survives_real_campaign_correction():

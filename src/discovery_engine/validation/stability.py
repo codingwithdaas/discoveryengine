@@ -26,7 +26,10 @@ exactly the kind of gap this project's methodology exists to catch.
    underdetermined regime (rank approaching min(n_samples, n_features))
    showed real cross-seed instability (some components with zero seed
    matches, min |r| as low as 0.24), so it's here on the evidence, not
-   the architecture. Nothing in this set's mechanism is neural-specific;
+   the architecture. Louvain is here for the same reason: it was exempted
+   on synthetic evidence, then on the real TCGA-BLCA RNA-seq graph the same
+   community came out with 289 to 378 genes depending on the seed.
+   Nothing in this set's mechanism is neural-specific;
    it's named for what's actually in it today, not for an assumption
    about why.
    Candidates from these methods MUST carry provenance["stability"]:
@@ -48,7 +51,7 @@ exactly the kind of gap this project's methodology exists to catch.
    measured (not assumed) via match_units_across_seeds on a realistic
    config, including an adversarial condition chosen because the relevant
    literature flags it as the likely failure mode (small ensembles / no
-   real signal for RSF; large, dense graphs for Louvain), and the
+   real signal for RSF), and the
    cross-seed correlation cleared the match threshold comfortably in every
    condition tested. Mapped to a short citation of that evidence, not just
    a bare method name, so the claim stays checkable rather than becoming
@@ -73,6 +76,7 @@ from discovery_engine.campaign.candidate import Candidate
 from discovery_engine.validation.bootstrap import calibration_band
 
 STABILITY_REQUIRED_METHODS: set[str] = {
+    "louvain",
     "autoencoder",
     "variational_autoencoder",
     "deepsurv",
@@ -86,14 +90,6 @@ EMPIRICALLY_EXEMPTED_METHODS: dict[str, str] = {
         "cross-seed |r| 0.71-0.99 across small-forest (n_estimators=10) and no-signal "
         "(pure-noise cohort) configs, both comfortably above the 0.7 match threshold; "
         "see rsf.py module docstring for full numbers"
-    ),
-    "louvain": (
-        "match_units_across_seeds on community-membership module scores, 3 seeds, across "
-        "4 configs (small graph with a real planted module, small graph with no signal, a "
-        "finer resolution, and a larger/denser 200-feature graph -- the last chosen because "
-        "the literature flags large/dense graphs as Louvain's likely instability regime, not "
-        "a repeat of favorable conditions): cross-seed |r| ~1.0 in every condition tested; "
-        "see louvain.py module docstring for full numbers"
     ),
 }
 
@@ -173,7 +169,7 @@ def match_units_across_seeds(runs: list[TrainedRun], threshold: float) -> list[d
     attention.py) to build every candidate's provenance["stability"], and
     (2) as a one-off empirical verification tool -- run manually against a
     realistic config before deciding whether a method belongs in
-    EMPIRICALLY_EXEMPTED_METHODS instead (random_survival_forest, louvain),
+    EMPIRICALLY_EXEMPTED_METHODS instead (random_survival_forest),
     where the result is cited as evidence in that method's own module
     docstring rather than embedded in its production discover() call.
     Moved here from autoencoder.py once a second method needed the
