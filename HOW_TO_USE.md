@@ -1,6 +1,6 @@
 # How to Use the Discovery Engine
 
-A practical guide to running a real discovery campaign, written so someone new to this codebase can actually do it, not just read about the architecture. If you want the "why," see `README.md` and `SKILL.md`. This document is about the "how."
+A practical guide to running a real discovery campaign, written so someone new to this codebase can actually do it, not just read about the architecture. If you want the "why," see `README.md` and `docs/METHODS.md`. This document is about the "how."
 
 ## What this tool actually does, in plain terms
 
@@ -89,9 +89,31 @@ Run discovery alone first (no validation, no correction) to get a real candidate
 
 ```python
 from discovery_engine.campaign.campaign import run_campaign
-from discovery_engine.discovery.clustering import HierarchicalClusteringDiscovery
+from discovery_engine.campaign.candidate import Candidate
+from discovery_engine.discovery.clustering import HierarchicalClusteringDiscovery, module_scores
 from discovery_engine.discovery.louvain import LouvainDiscovery
+from discovery_engine.signatures.registry import SignatureRegistry
 # ... import whichever discovery methods you want to use ...
+
+COHORT_ID = "my_cohort"
+
+# Load any signatures you already know about BEFORE the campaign, under the
+# same cohort_id. "Adds value beyond known signatures" and novelty are only
+# tested against what is in the registry; with an empty registry those checks
+# are skipped (and recorded as skipped in each candidate's gate result).
+registry = SignatureRegistry("signatures.db")
+known_features = ["feat_1", "feat_2", "feat_3"]  # e.g. a previously published module
+registry.add(
+    Candidate(
+        id="known_signature_A", method="known_signature", method_params={},
+        outcome_blind=True, modality_touch=["histology"],
+        sample_ids=list(cohort.modalities["histology"].index),
+        scores=module_scores(cohort.modalities["histology"][known_features],
+                             list(cohort.modalities["histology"].index)),
+        provenance={"member_features": known_features},
+    ),
+    cohort_id=COHORT_ID, campaign_id="prior_work", validation_summary={},
+)
 
 all_candidates = []
 all_candidates += HierarchicalClusteringDiscovery().discover(cohort, modality="histology", k_values=[4, 6, 8])
@@ -99,17 +121,22 @@ all_candidates += LouvainDiscovery().discover(cohort, modality="histology", reso
 # ... run every discovery method you want included ...
 
 report = run_campaign(
+    campaign_id="campaign_1",
+    cohort_id=COHORT_ID,
     candidates=all_candidates,
     data=cohort,
     outcome=outcome,
-    correction_n_permutations=1000,
+    signature_registry=registry,
+    correction_n_permutations=1000,  # minimum; the engine refuses fewer (see below)
     alpha=0.05,
 )
 
 print(f"{len(report.accepted)} accepted, {len(report.rejected)} rejected, out of {len(all_candidates)} total")
 ```
 
-**One rule that matters more than any other: if you're combining multiple discovery methods or multiple feature subsets of the same data, run correction once, over everything together, at the end.** Never run it separately per method or per subset. Splitting correction defeats the entire reason this framework exists, it's supposed to account for the total number of things you tried, and it can't do that if you hide part of the search from it.
+**Use at least 1,000 permutations for anything you will report.** The engine refuses fewer unless you pass `allow_low_permutations=True`, which exists only for tests and quick canary runs. This is not a formality: each candidate's statistic is divided by the spread of its own shuffled-outcome null, and with few shuffles that spread is underestimated, which makes every candidate look stronger than it is. On real TCGA-BLCA data, three candidates accepted at 50 permutations all failed when rerun at 10,000.
+
+**One rule that matters more than any other: if you're combining multiple discovery methods, multiple feature subsets, or multiple campaigns on the same patients, run correction once, over everything together, at the end.** Re-testing a candidate in a second campaign on a subset of the same patients is part of the same search, not a new one. Never run it separately per method or per subset. Splitting correction defeats the entire reason this framework exists, it's supposed to account for the total number of things you tried, and it can't do that if you hide part of the search from it.
 
 ## Step 5: Write the report
 
@@ -128,11 +155,11 @@ The report lists every candidate, accepted or rejected, with the specific reason
 
 ## What to actually check when something gets accepted
 
-A candidate surviving the gate and correction is a real, statistically defensible result. It is not automatically a finished, publication-ready finding. Before trusting it further:
+A candidate surviving the gate and correction is a candidate worth testing further. It is not a finished finding until it holds up in independent patients. Before trusting it further:
 
 1. **Check what it's actually made of.** Look at the top contributing features (in the report's interpretability section). Does the pattern make sense, or does it look like noise that happened to survive?
 2. **Check whether it's actually new.** The novelty score tells you if it overlaps with anything you already knew. A candidate that's 90% correlated with something you've already validated isn't a new finding.
-3. **Check it against an obvious confound directly**, don't just trust that the automated check passed. If you have a covariate you're worried about (grade, stage, batch, anything), look at the actual numbers, not just the pass/fail flag.
+3. **Check it against an obvious confound directly**, don't just trust that the automated check passed. Some gate checks (bootstrap CI, covariate-stratified test, median vs extreme-groups crosscheck) are advisory and never reject a candidate on their own, and some are skipped in certain settings (Freedman-Lane is not implemented for survival outcomes). Each candidate's gate result lists its `skipped_checks`; read them. If you have a covariate you're worried about (grade, stage, batch, anything), look at the actual numbers, not just the pass/fail flag.
 
 ## Practical lessons learned running this for real (read this before your first real campaign)
 
@@ -151,5 +178,5 @@ These are not hypothetical warnings, every one of them is something that actuall
 ## Where to go for more detail
 
 - `README.md` — what's actually in the codebase, module by module.
-- `SKILL.md` — the full methodological rulebook this tool enforces, and the real findings that led to each rule.
+- `docs/METHODS.md`: the methodological rules this tool enforces, including which gate checks decide pass/fail and which are advisory.
 - The `tests/` directory — every method and every validation check has tests that double as working examples of how to call it.

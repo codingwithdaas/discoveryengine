@@ -34,7 +34,7 @@ It was then run on public TCGA bladder cancer data. The real run exposed bugs th
 
 ## Where to look
 
-For the full methods and design (architecture, all eight validation checks, how each method is categorized), see [`docs/METHODS.md`](docs/METHODS.md).
+For the full methods and design (architecture, the validation checks and which of them decide pass/fail, how each method is categorized), see [`docs/METHODS.md`](docs/METHODS.md).
 
 
 | If you want to see... | Open |

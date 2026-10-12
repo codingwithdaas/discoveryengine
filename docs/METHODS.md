@@ -18,12 +18,20 @@ The single most important architectural principle: if a campaign runs multiple d
 
 ### Campaign correction (`campaign/`)
 - `candidate.py`: the unit of discovery output; a `Candidate` carries an optional `refit` closure for outcome-informed methods, so a valid permutation null can genuinely retrain the candidate under permutation rather than just re-score a fixed fit.
-- `correction.py`: studentized maxT / Westfall-Young correction across the full candidate pool. Fully bit-reproducible given a fixed seed, including every retrained outcome-informed candidate.
+- `correction.py`: studentized maxT / Westfall-Young correction across the full candidate pool. Fully bit-reproducible given a fixed seed, including every retrained outcome-informed candidate. Refuses fewer than 1,000 permutations (studentization needs a well-estimated null SD; at 50 permutations real-data runs produced false acceptances) and refuses duplicate candidate ids.
 - `registry.py`: append-only candidate log. Structurally rejects outcome-informed candidates with no refit closure; they cannot be validly corrected without one.
 - `campaign.py`: top-level orchestrator: correction over the full pool first, then the per-candidate gate, with outcome-type compatibility checked before anything runs.
 
 ### Validation gate (`validation/`)
-Every candidate, from every method, passes through the same eight checks:
+Every candidate, from every method, goes through the same checks. Not all of them decide pass/fail; each candidate's gate result records which checks failed, which were skipped and why, and which are advisory.
+
+**Gating** (can reject a candidate): half-split reproducibility; Freedman-Lane covariate adjustment (continuous and binary outcomes only); adds-value beyond known signatures and novelty (only when known signatures are loaded in the registry); seed stability (stability-required methods); interpretability.
+
+**Advisory** (recorded, never reject on their own): bootstrap confidence interval; covariate-stratified test; median-split vs extreme-groups crosscheck.
+
+**Skipped** checks are listed with a reason, for example Freedman-Lane on survival outcomes, which is not implemented. A skipped check is not a passed check.
+
+The checks:
 - Bootstrap direction-consistency (≥30 independent random half-splits) and true bootstrap confidence intervals, kept as two distinct, correctly-labeled methods, not conflated.
 - Grade/covariate independence, via stratified testing and Freedman-Lane covariate-adjusted permutation.
 - Median-split vs. extreme-groups design crosscheck, with a confound-only rerun when the two designs disagree.
@@ -38,7 +46,7 @@ Seven methods, each explicitly categorized as outcome-blind or outcome-informed,
 | Method | Type | Stability |
 |---|---|---|
 | Hierarchical clustering | Outcome-blind | Deterministic |
-| Louvain community detection | Outcome-blind | Empirically exempted (measured, not assumed) |
+| Louvain community detection | Outcome-blind | Stability-required (exempted on synthetic evidence, then measured unstable on real RNA-seq: membership changed with the seed) |
 | NMF | Outcome-blind | Stability-required (measured *unstable* at high rank, evidence, not architecture, decided this) |
 | Explicit interaction search | Outcome-blind | Deterministic (closed-form residualization) |
 | Autoencoder / VAE | Outcome-blind | Stability-required |
@@ -68,7 +76,7 @@ pip install -e .
 
 Research software, not a clinical tool. Any signature it reports is a discovery-stage candidate from a single cohort until independently replicated.
 
-All core phases are built and tested against synthetic data with known planted signals before ever touching real data. The engine has since been run against real TCGA-BLCA data (CMB histology + RNA-seq, disease-specific survival outcome), including catching and fixing a genuine candidate-ID collision bug mid-campaign before trusting any result, a live demonstration of exactly the discipline this engine is built to enforce.
+All core phases are built and tested against synthetic data with known planted signals before ever touching real data. The engine has since been run against real TCGA-BLCA data (CMB histology + RNA-seq, disease-specific survival outcome), including catching and fixing a genuine candidate-ID collision bug mid-campaign. Those campaigns were run with 50 permutations; rerun with 10,000, none of their accepted candidates survived correction. The engine now refuses fewer than 1,000 permutations.
 
 ## Methodology standards
 
