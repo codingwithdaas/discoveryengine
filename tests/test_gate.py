@@ -40,3 +40,51 @@ def test_bootstrap_n_resamples_is_independently_configurable_from_n_permutations
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def _survival_setup(n=60, seed=0):
+    import pandas as pd
+    rng = np.random.default_rng(seed)
+    ids = [f"S{i}" for i in range(n)]
+    x = rng.normal(size=n)
+    time = rng.exponential(scale=np.exp(-0.8 * x)) * 10 + 0.1
+    event = (rng.random(n) < 0.7).astype(float)
+    outcome = OutcomeSpec(OutcomeType.SURVIVAL, ids, np.column_stack([time, event]))
+    data = CohortData(
+        modalities={"m": pd.DataFrame({"f": x}, index=ids)},
+        covariates=pd.DataFrame({"grade": rng.integers(0, 2, size=n).astype(float)}, index=ids),
+    )
+    candidate = Candidate(
+        id="c", method="hierarchical_clustering", method_params={}, outcome_blind=True,
+        modality_touch=["m"], sample_ids=ids, scores=dict(zip(ids, x)), provenance={"member_features": ["f"]},
+    )
+    return candidate, data, outcome
+
+
+def test_survival_freedman_lane_skip_is_recorded_not_silently_passed():
+    candidate, data, outcome = _survival_setup()
+    result = run_validation_gate(
+        candidate, data, outcome, existing_signatures=[], covariate_col="grade",
+        n_permutations=20, bootstrap_n_resamples=20, seed=0,
+    )
+    assert result.freedman_lane is None
+    assert any(s.startswith("freedman_lane: not implemented for survival") for s in result.skipped_checks)
+
+
+def test_missing_known_signatures_is_recorded_as_skipped():
+    candidate, data, outcome = _survival_setup()
+    result = run_validation_gate(
+        candidate, data, outcome, existing_signatures=[], n_permutations=20, bootstrap_n_resamples=20, seed=0,
+    )
+    assert any(s.startswith("adds_value_and_novelty") for s in result.skipped_checks)
+    assert any(s.startswith("freedman_lane: no covariate") for s in result.skipped_checks)
+
+
+def test_advisory_checks_are_named_and_never_fail_a_candidate_alone():
+    candidate, data, outcome = _survival_setup()
+    result = run_validation_gate(
+        candidate, data, outcome, existing_signatures=[], n_permutations=20, bootstrap_n_resamples=20, seed=0,
+    )
+    assert set(result.advisory_checks) == {"bootstrap_ci", "covariate_stratified", "design_crosscheck"}
+    for reason in result.failure_reasons:
+        assert "bootstrap" not in reason and "stratified" not in reason and "extreme" not in reason

@@ -21,6 +21,23 @@ one): a candidate FAILS this gate if any of the following hold:
 Every individual check's result is kept regardless of pass/fail, so a
 failed candidate's specific reasons are always in the record.
 
+Which checks decide pass/fail, stated plainly (the docs once described all
+of these as "checks every candidate must pass", which overstated it):
+  GATING (can fail a candidate): half-split consistency, Freedman-Lane
+    (CONTINUOUS/BINARY outcomes only), adds-value vs existing signatures
+    (only when existing signatures were supplied), seed stability (methods
+    in STABILITY_REQUIRED_METHODS), novelty (fully_redundant), and
+    interpretability.
+  ADVISORY (computed and recorded, never fail a candidate on their own):
+    bootstrap CI, covariate-stratified test, median-split vs extreme-groups
+    design crosscheck.
+  SKIPPED is recorded in GateResult.skipped_checks with a reason whenever a
+    gating check could not run (e.g. Freedman-Lane on SURVIVAL outcomes, which
+    is not implemented; adds-value / novelty with no existing signatures
+    loaded). A skipped check is not a passed check. On SURVIVAL outcomes with
+    no known signatures loaded, a candidate's pass/fail rests only on
+    half-split consistency, stability (where required) and interpretability.
+
 bootstrap_n_resamples is independently configurable from n_permutations
 (which controls every OTHER permutation-based sub-check here), not
 because it's a different kind of parameter in principle, but because a
@@ -68,6 +85,10 @@ class GateResult:
     interpretability: InterpretabilityReport
     passed: bool
     failure_reasons: list[str] = field(default_factory=list)
+    skipped_checks: list[str] = field(default_factory=list)
+    advisory_checks: list[str] = field(
+        default_factory=lambda: ["bootstrap_ci", "covariate_stratified", "design_crosscheck"]
+    )
 
 
 def run_validation_gate(
@@ -82,6 +103,7 @@ def run_validation_gate(
     seed: int = 0,
 ) -> GateResult:
     reasons: list[str] = []
+    skipped: list[str] = []
 
     half_split = half_split_consistency(candidate, outcome, n_splits=30, seed=seed)
     if half_split.calibration == "noise":
@@ -105,7 +127,14 @@ def run_validation_gate(
                     f"{covariate_col} ({freedman_lane.p_value:.3f})"
                 )
         except NotImplementedError:
-            pass  # e.g. survival outcome; covariate_stratified_test above already covers it
+            # e.g. SURVIVAL outcome. Recorded, not silently passed: the
+            # covariate-stratified test above runs, but it is advisory only.
+            skipped.append(
+                f"freedman_lane: not implemented for {outcome.type.value} outcomes; "
+                f"no gating covariate adjustment for {covariate_col}"
+            )
+    else:
+        skipped.append("freedman_lane: no covariate supplied")
 
     design_crosscheck = median_split_vs_extreme_groups(
         candidate, outcome, n_permutations=n_permutations, seed=seed, confound=confound_for_crosscheck
@@ -114,6 +143,11 @@ def run_validation_gate(
     multivariate = multivariate_adds_value(
         candidate, outcome, existing_signatures, n_permutations=n_permutations, seed=seed
     )
+    if not existing_signatures:
+        skipped.append(
+            "adds_value_and_novelty: no existing signatures supplied; load known signatures "
+            "into the SignatureRegistry to test them"
+        )
     if existing_signatures and multivariate.p_value >= 0.05:
         reasons.append(
             f"does not add value beyond {len(existing_signatures)} already-accepted "
@@ -145,6 +179,7 @@ def run_validation_gate(
         interpretability=interpretability,
         passed=len(reasons) == 0,
         failure_reasons=reasons,
+        skipped_checks=skipped,
     )
     _logger.info("gate: candidate %s (%s) complete, passed=%s", candidate.id, candidate.method, result.passed)
     return result
