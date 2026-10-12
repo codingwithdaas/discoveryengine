@@ -76,12 +76,14 @@ def run_campaign(
     gate_bootstrap_n_resamples: int = 1000,
     alpha: float = 0.05,
     seed: int = 0,
+    allow_low_permutations: bool = False,
 ) -> CampaignReport:
     for c in candidates:
         assert_outcome_compatible(c.method, outcome.type)
 
     correction_results = run_campaign_correction(
-        candidates, data, outcome, n_permutations=correction_n_permutations, seed=seed
+        candidates, data, outcome, n_permutations=correction_n_permutations, seed=seed,
+        allow_low_permutations=allow_low_permutations,
     )
 
     accepted_so_far = signature_registry.all_as_candidates(cohort_id=cohort_id)

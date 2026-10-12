@@ -85,7 +85,7 @@ def test_broken_refit_that_ignores_permuted_outcome_raises():
     )
 
     try:
-        run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=5, seed=0)
+        run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=5, seed=0, allow_low_permutations=True)
         assert False, "expected RefitDidNotChangeError"
     except RefitDidNotChangeError as e:
         assert "broken" in str(e)
@@ -108,7 +108,7 @@ def test_broken_refit_raises_in_naive_baseline_too():
     )
 
     try:
-        naive_within_method_bh_fdr([candidate], _EMPTY_DATA, outcome, n_permutations=5, seed=0)
+        naive_within_method_bh_fdr([candidate], _EMPTY_DATA, outcome, n_permutations=5, seed=0, allow_low_permutations=True)
         assert False, "expected RefitDidNotChangeError"
     except RefitDidNotChangeError:
         pass
@@ -127,7 +127,7 @@ def test_genuine_refit_passes_through_correction_without_raising():
         refit=_genuine_refit,
     )
 
-    results = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=10, seed=0)
+    results = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=10, seed=0, allow_low_permutations=True)
     assert "genuine" in results
 
 
@@ -148,8 +148,8 @@ def test_run_campaign_correction_is_bit_reproducible_with_fixed_seed():
         refit=_genuine_refit,
     )
 
-    results_a = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=25, seed=7)
-    results_b = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=25, seed=7)
+    results_a = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=25, seed=7, allow_low_permutations=True)
+    results_b = run_campaign_correction([candidate], _EMPTY_DATA, outcome, n_permutations=25, seed=7, allow_low_permutations=True)
 
     assert results_a["genuine"].observed_statistic == results_b["genuine"].observed_statistic
     assert results_a["genuine"].studentized_statistic == results_b["genuine"].studentized_statistic

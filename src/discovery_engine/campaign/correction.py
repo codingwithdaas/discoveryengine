@@ -53,6 +53,59 @@ from discovery_engine.outcomes import OutcomeSpec, association_statistic
 _MIN_SD = 1e-8
 _logger = logging.getLogger(__name__)
 
+# Minimum permutations for a real campaign. Studentized maxT divides each
+# candidate's statistic by the SD of its own permutation null; with very few
+# permutations that SD is badly estimated, and an underestimated SD inflates
+# the studentized statistic. Measured on the real TCGA-BLCA campaigns: at 50
+# permutations the null SDs of exactly reproduced candidates came out around
+# 0.80-0.88 instead of ~1.00, which moved one candidate from a corrected
+# p of about 0.2 (10,000 permutations) to 0.039, and two others from about
+# 0.07 and 0.12 to 0.0196. Every acceptance in those campaigns came from this.
+# 50 permutations also cannot resolve p below 1/51 = 0.0196.
+MIN_CAMPAIGN_PERMUTATIONS = 1000
+
+
+class TooFewPermutationsError(ValueError):
+    """Raised when a campaign correction is asked to run with fewer than
+    MIN_CAMPAIGN_PERMUTATIONS permutations without an explicit opt-out."""
+
+
+class DuplicateCandidateIdError(ValueError):
+    """Raised when two candidates in one correction pool share an id. Results
+    are keyed by id, so a duplicate would silently overwrite another
+    candidate's result (this happened once on real data, across feature
+    subsets; see tests/test_feature_subset_id_uniqueness.py)."""
+
+
+def check_permutation_count(n_permutations: int, allow_low_permutations: bool) -> None:
+    if n_permutations >= MIN_CAMPAIGN_PERMUTATIONS:
+        return
+    message = (
+        f"n_permutations={n_permutations} is below the campaign minimum of "
+        f"{MIN_CAMPAIGN_PERMUTATIONS}. With few permutations the per-candidate null SD used "
+        "for studentization is poorly estimated and corrected p-values are unreliable "
+        f"(and cannot go below 1/(n+1) = {1 / (n_permutations + 1):.4f})."
+    )
+    if not allow_low_permutations:
+        raise TooFewPermutationsError(
+            message + " Pass allow_low_permutations=True only for tests or quick canary runs, "
+            "never for results that will be reported."
+        )
+    _logger.warning("%s Proceeding because allow_low_permutations=True; do not report these p-values.", message)
+
+
+def check_unique_candidate_ids(candidates: list[Candidate]) -> None:
+    seen: dict[str, int] = {}
+    for c in candidates:
+        seen[c.id] = seen.get(c.id, 0) + 1
+    dups = sorted(cid for cid, n in seen.items() if n > 1)
+    if dups:
+        raise DuplicateCandidateIdError(
+            f"{len(dups)} candidate id(s) appear more than once in the correction pool: {dups[:10]}. "
+            "Results are keyed by id, so duplicates would silently overwrite each other. "
+            "Make ids unique (e.g. pass feature_subset=... to discover())."
+        )
+
 
 class RefitDidNotChangeError(RuntimeError):
     """Raised when an outcome-informed candidate's refit() returns scores
@@ -85,9 +138,12 @@ def run_campaign_correction(
     outcome: OutcomeSpec,
     n_permutations: int = 1000,
     seed: int = 0,
+    allow_low_permutations: bool = False,
 ) -> dict[str, CorrectionResult]:
     if not candidates:
         return {}
+    check_permutation_count(n_permutations, allow_low_permutations)
+    check_unique_candidate_ids(candidates)
 
     rng = np.random.default_rng(seed)
     n = len(candidates)
@@ -124,6 +180,7 @@ def naive_within_method_bh_fdr(
     outcome: OutcomeSpec,
     n_permutations: int = 1000,
     seed: int = 0,
+    allow_low_permutations: bool = False,
 ) -> dict[str, float]:
     """The comparison baseline: permutation p-value computed against each
     candidate's OWN null only, then Benjamini-Hochberg FDR correction applied
@@ -132,6 +189,8 @@ def naive_within_method_bh_fdr(
     substitute for it because it never lets one method's candidates compete
     against another method's in the same correction.
     """
+    check_permutation_count(n_permutations, allow_low_permutations)
+    check_unique_candidate_ids(candidates)
     rng = np.random.default_rng(seed)
     n = len(candidates)
     observed = np.array([association_statistic(outcome, c.scores) for c in candidates])

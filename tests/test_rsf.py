@@ -111,7 +111,7 @@ def test_rsf_candidate_survives_real_campaign_correction_without_raising():
         modalities=["rnaseq", "protein"], forest_configs=[_SMALL_CONFIG],
     )[0]
 
-    results = run_campaign_correction([candidate], data, outcome, n_permutations=5, seed=0)
+    results = run_campaign_correction([candidate], data, outcome, n_permutations=5, seed=0, allow_low_permutations=True)
     assert candidate.id in results
     assert 0.0 < results[candidate.id].campaign_p_value <= 1.0
 

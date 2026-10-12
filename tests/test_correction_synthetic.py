@@ -37,7 +37,7 @@ def test_campaign_correction_recovers_planted_signal_and_suppresses_noise():
     )
     candidates.append(refit_candidate)
 
-    results = run_campaign_correction(candidates, cohort, outcome, n_permutations=500, seed=2)
+    results = run_campaign_correction(candidates, cohort, outcome, n_permutations=500, seed=2, allow_low_permutations=True)
 
     assert len(results) == len(candidates)
 

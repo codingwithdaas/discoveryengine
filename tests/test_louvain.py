@@ -83,7 +83,7 @@ def test_louvain_candidate_survives_real_campaign_correction():
 
     rng = np.random.default_rng(0)
     outcome = OutcomeSpec(OutcomeType.CONTINUOUS, list(cohort.modalities["rnaseq"].index), rng.normal(size=60))
-    results = run_campaign_correction(candidates, cohort, outcome, n_permutations=10, seed=0)
+    results = run_campaign_correction(candidates, cohort, outcome, n_permutations=10, seed=0, allow_low_permutations=True)
     assert len(results) == len(candidates)
     for r in results.values():
         assert 0.0 < r.campaign_p_value <= 1.0

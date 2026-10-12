@@ -45,7 +45,7 @@ def test_run_campaign_raises_before_doing_any_work_for_interaction_search_surviv
     with pytest.raises(ValueError, match="not currently trusted"):
         run_campaign(
             campaign_id="camp", cohort_id="cohort1", candidates=candidates, data=data, outcome=outcome,
-            signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5,
+            signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5, allow_low_permutations=True,
         )
 
 
@@ -58,7 +58,7 @@ def test_run_campaign_proceeds_normally_for_interaction_search_continuous(tmp_pa
 
     report = run_campaign(
         campaign_id="camp", cohort_id="cohort1", candidates=candidates, data=data, outcome=outcome,
-        signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5,
+        signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5, allow_low_permutations=True,
     )
     assert len(report.candidate_reports) == len(candidates)
 
@@ -74,7 +74,7 @@ def test_run_campaign_proceeds_normally_for_other_methods_against_survival(tmp_p
 
     report = run_campaign(
         campaign_id="camp", cohort_id="cohort1", candidates=candidates, data=data, outcome=outcome,
-        signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5,
+        signature_registry=registry, correction_n_permutations=5, gate_n_permutations=5, allow_low_permutations=True,
     )
     assert len(report.candidate_reports) == len(candidates)
 

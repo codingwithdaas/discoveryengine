@@ -53,7 +53,7 @@ def test_end_to_end_pipeline_recovers_planted_module_and_records_every_candidate
         outcome=outcome,
         signature_registry=registry,
         covariate_col="grade",
-        correction_n_permutations=300,
+        correction_n_permutations=300, allow_low_permutations=True,
         gate_n_permutations=150,
         seed=1,
     )
@@ -108,7 +108,7 @@ def test_end_to_end_pipeline_on_pure_noise_accepts_almost_nothing(tmp_path):
         outcome=outcome,
         signature_registry=registry,
         covariate_col="grade",
-        correction_n_permutations=300,
+        correction_n_permutations=300, allow_low_permutations=True,
         gate_n_permutations=150,
         seed=2,
     )

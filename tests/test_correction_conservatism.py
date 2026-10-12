@@ -17,8 +17,8 @@ def test_campaign_correction_is_more_conservative_than_naive_within_method_pooli
         cohort, real_feature, n_methods=6, n_noise_candidates_per_method=10, seed=1
     )
 
-    campaign_results = run_campaign_correction(candidates, cohort, outcome, n_permutations=300, seed=2)
-    naive_q = naive_within_method_bh_fdr(candidates, cohort, outcome, n_permutations=300, seed=2)
+    campaign_results = run_campaign_correction(candidates, cohort, outcome, n_permutations=300, seed=2, allow_low_permutations=True)
+    naive_q = naive_within_method_bh_fdr(candidates, cohort, outcome, n_permutations=300, seed=2, allow_low_permutations=True)
 
     noise_ids = [c.id for c in candidates if c.id != "real_signal"]
     campaign_p = [campaign_results[cid].campaign_p_value for cid in noise_ids]

@@ -41,7 +41,7 @@ def test_report_document_against_a_real_campaign_run(tmp_path):
     registry = SignatureRegistry(tmp_path / "signatures.db")
     campaign_report = run_campaign(
         campaign_id="camp_report_test", cohort_id="cohort1", candidates=candidates, data=data, outcome=outcome,
-        signature_registry=registry, correction_n_permutations=100, gate_n_permutations=100, seed=1,
+        signature_registry=registry, correction_n_permutations=100, gate_n_permutations=100, seed=1, allow_low_permutations=True,
     )
 
     doc = build_report_document(campaign_report, candidates)

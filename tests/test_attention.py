@@ -175,7 +175,7 @@ def test_attention_candidate_survives_real_campaign_correction_without_raising()
         modalities=["rnaseq", "protein"], head_configs=[_SMALL_CONFIG], n_seeds=1, max_epochs=15, patience=4,
     )[0]
 
-    results = run_campaign_correction([candidate], data, outcome, n_permutations=5, seed=0)
+    results = run_campaign_correction([candidate], data, outcome, n_permutations=5, seed=0, allow_low_permutations=True)
     assert candidate.id in results
     assert 0.0 < results[candidate.id].campaign_p_value <= 1.0
 
