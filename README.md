@@ -1,6 +1,6 @@
-# Discovery Engine
-
-**Software that finds patterns in cancer data, then tries hard to prove they are fake.**
+<p align="center">
+  <img src="docs/banner.jpg" width="100%" alt="Discovery Engine: finds patterns in cancer data, then tries hard to prove they’re fake. Background: a microscope image of bladder cancer tissue.">
+</p>
 
 Built to search patient tumor data for biomarkers (measurable signs that predict how a disease will go) while guarding against the most common mistake in this field: mistaking luck for a discovery.
 
@@ -69,3 +69,7 @@ Research software, not a clinical tool. Anything it reports is a discovery-stage
 ## Data
 
 This repository contains no data. Point the loaders in `src/discovery_engine/data/` at your own locally-held copy.
+
+## Image credit
+
+The banner (`docs/banner.jpg`) is adapted from ["High-grade papillary urothelial carcinoma -- low mag.jpg"](https://commons.wikimedia.org/wiki/File:High-grade_papillary_urothelial_carcinoma_--_low_mag.jpg) by [Nephron](https://commons.wikimedia.org/wiki/User:Nephron), via Wikimedia Commons, licensed [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Changes: cropped to a horizontal strip, darkened on the left with a gradient, and overlaid with the title, tagline and a caption. The banner is shared under the same CC BY-SA 3.0 license. It is a public teaching image, not data from this project, and its use does not imply endorsement by the author.
